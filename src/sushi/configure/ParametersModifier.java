@@ -4,7 +4,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.List;
 
-import jbse.apps.settings.ParseException;
 import jbse.apps.settings.SettingsReader;
 
 public class ParametersModifier {
@@ -15,7 +14,12 @@ public class ParametersModifier {
 	
 	protected final void loadHEXFile(String path, JBSEParameters p) 
 	throws FileNotFoundException, ParseException, IOException {
-		final SettingsReader sr = new SettingsReader(path);
+		final SettingsReader sr;
+		try {
+			sr = new SettingsReader(path);
+		} catch (jbse.apps.settings.ParseException e) {
+			throw new ParseException(e.getMessage());
+		}
 		sr.fillRunnerParameters(p.getRunnerParameters());
 		sr.fillRulesLICS(p.getLICSRulesRepo());
 		sr.fillRulesClassInit(p.getClassInitRulesRepo());
