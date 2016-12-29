@@ -7,6 +7,7 @@ public class MinimizerParameters {
 	private Path fBranches;
 	private Path fCoverage;
 	private Path fOutput;
+	private int numberOfTasks;
 	private Pattern toIgnore;
 	private Pattern toCover;
 	
@@ -20,6 +21,10 @@ public class MinimizerParameters {
 	
 	public void setOutputFilePath(Path f) {
 		this.fOutput = f;
+	}
+	
+	public void setNumberOfTasks(int numberOfTasks) {
+		this.numberOfTasks = numberOfTasks;
 	}
 	
 	public void setBranchesToIgnore(String pattern) {
@@ -42,6 +47,10 @@ public class MinimizerParameters {
 	
 	public Path getOutputFilePath() {
 		return this.fOutput;
+	}
+	
+	public int getNumberOfTasks() {
+		return this.numberOfTasks;
 	}
 	
 	public Pattern getBranchesToIgnore() {
