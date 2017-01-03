@@ -24,6 +24,8 @@ public class ParametersModifier {
 		sr.fillRulesLICS(p.getLICSRulesRepo());
 		sr.fillRulesClassInit(p.getClassInitRulesRepo());
 	}
+	
+	public void modify(MergerParameters p) { }
 
 	public void modify(MinimizerParameters p) { }
 

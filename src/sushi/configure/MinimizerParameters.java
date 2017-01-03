@@ -1,15 +1,13 @@
 package sushi.configure;
 
 import java.nio.file.Path;
-import java.util.regex.Pattern;
 
 public class MinimizerParameters {
 	private Path fBranches;
 	private Path fCoverage;
 	private Path fOutput;
+	private Path fBranchesToIgnore;
 	private int numberOfTasks;
-	private Pattern toIgnore;
-	private Pattern toCover;
 	
 	public void setBranchesFilePath(Path f) {
 		this.fBranches = f;
@@ -22,19 +20,13 @@ public class MinimizerParameters {
 	public void setOutputFilePath(Path f) {
 		this.fOutput = f;
 	}
+
+	public void setBranchesToIgnoreFilePath(Path f) {
+		this.fBranchesToIgnore = f;
+	}
 	
 	public void setNumberOfTasks(int numberOfTasks) {
 		this.numberOfTasks = numberOfTasks;
-	}
-	
-	public void setBranchesToIgnore(String pattern) {
-		this.toIgnore = Pattern.compile(pattern);
-		this.toCover = null;
-	}
-	
-	public void setBranchesToCover(String pattern) {
-		this.toIgnore = null;
-		this.toCover = Pattern.compile(pattern);
 	}
 	
 	public Path getBranchesFilePath() {
@@ -49,15 +41,12 @@ public class MinimizerParameters {
 		return this.fOutput;
 	}
 	
+	public Path getBranchesToIgnoreFilePath() {
+		return this.fBranchesToIgnore;
+	}
+	
 	public int getNumberOfTasks() {
 		return this.numberOfTasks;
 	}
 	
-	public Pattern getBranchesToIgnore() {
-		return this.toIgnore;
-	}
-	
-	public Pattern getBranchesToCover() {
-		return this.toCover;
-	}
 }
