@@ -15,6 +15,7 @@ public class MergerParameters {
 	private Pattern toIgnore;
 	private Pattern toCover;
 	private Path fBranchesToIgnore;
+	private Path fTracesToIgnore;
 	
 	public void setMethodsFilePath(Path f) {
 		this.fMethods = f;
@@ -96,5 +97,13 @@ public class MergerParameters {
 	
 	public Path getBranchesToIgnoreFilePath() {
 		return this.fBranchesToIgnore;
+	}
+
+	public void setTracesToIgnoreFilePath(Path f) {
+		this.fTracesToIgnore = f;
+	}
+	
+	public Path getTracesToIgnoreFilePath() {
+		return this.fTracesToIgnore;
 	}
 }

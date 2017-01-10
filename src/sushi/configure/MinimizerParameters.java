@@ -7,6 +7,7 @@ public class MinimizerParameters {
 	private Path fCoverage;
 	private Path fOutput;
 	private Path fBranchesToIgnore;
+	private Path fTracesToIgnore;
 	private int numberOfTasks;
 	
 	public void setBranchesFilePath(Path f) {
@@ -23,6 +24,10 @@ public class MinimizerParameters {
 
 	public void setBranchesToIgnoreFilePath(Path f) {
 		this.fBranchesToIgnore = f;
+	}
+	
+	public void setTracesToIgnoreFilePath(Path f) {
+		this.fTracesToIgnore = f;
 	}
 	
 	public void setNumberOfTasks(int numberOfTasks) {
@@ -43,6 +48,10 @@ public class MinimizerParameters {
 	
 	public Path getBranchesToIgnoreFilePath() {
 		return this.fBranchesToIgnore;
+	}
+	
+	public Path getTracesToIgnoreFilePath() {
+		return this.fTracesToIgnore;
 	}
 	
 	public int getNumberOfTasks() {
