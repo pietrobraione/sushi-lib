@@ -127,6 +127,10 @@ public class Options {
 	@Option(name = "-synthesis_redundance",
 			usage = "Number of parallel synthesis tasks per trace")
 	private int redundanceEvosuite = 3;
+
+	@Option(name = "-global_time_budget",
+			usage = "Time budget in seconds for the whole generation process, -1 for unlimited")
+	private int budgetGlobal = -1;
 	
 	@Option(name = "-log_level",
 			usage = "Logging level to be used: FATAL, ERROR, WARN, INFO, DEBUG")
@@ -328,6 +332,14 @@ public class Options {
 	
 	public void setRedundanceEvosuite(int redundanceEvosuite) {
 		this.redundanceEvosuite = redundanceEvosuite;
+	}
+	
+	public int getGlobalBudget() {
+		return this.budgetGlobal;
+	}
+	
+	public void setGlobalBudget(int budgetGlobal) {
+		this.budgetGlobal = budgetGlobal;
 	}
 	
 	public Level getLogLevel() {
