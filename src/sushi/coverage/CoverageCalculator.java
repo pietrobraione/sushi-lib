@@ -167,7 +167,7 @@ public final class CoverageCalculator {
 
 				Object instance = testSuiteClass.newInstance();
 				try {
-					logger.info("Executing test case " + testMethod);
+					logger.debug("Executing test case " + testMethod);
 					testMethod.invoke(instance, new Object[testMethod.getParameterTypes().length]);
 				} catch (IllegalAccessException | IllegalArgumentException e) {
 					throw e;
