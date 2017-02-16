@@ -11,7 +11,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.Permission;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -32,6 +34,7 @@ import org.jacoco.core.runtime.IRuntime;
 import org.jacoco.core.runtime.LoggerRuntime;
 import org.jacoco.core.runtime.RuntimeData;
 
+import sushi.logging.Level;
 import sushi.logging.Logger;
 
 /**
@@ -54,7 +57,6 @@ public final class CoverageCalculator {
 	 *            list of program arguments
 	 */
 	public static void main(final String[] args) {
-		//Logger.setLevel(Level.DEBUG);
 		Path baseTestFolder = Paths.get("/");
 		String[] tsuite = null;
 		String[] covTargets = null;
@@ -67,21 +69,23 @@ public final class CoverageCalculator {
 				tsuite = args[++i].split(":");
 			} else if (args[i].equals("-covtargets")) {
 				covTargets = args[++i].split(":");
+			} else if (args[i].equals("-v")) {
+				Logger.setLevel(Level.DEBUG);
 			} 
 		}
 
 		if (tsuite == null || covTargets == null) {
-			logger.info("Usage: java " + CoverageCalculator.class.getCanonicalName() + " [-testsrcfolder folder] -testsuite test_suite -covtargets covTarget[:covTarget[...]]");
+			logger.info("Usage: java " + CoverageCalculator.class.getCanonicalName() + " [-v] [-testsrcfolder folder] -testsuite test_suite -covtargets covTarget[:covTarget[...]]");
 			System.exit(1);
 		}
 		
 		tsuite = expandTestSuiteWithWildChars(tsuite, baseTestFolder);
 		
-		logger.debug("Calculating coverage of test suite in classes " + tsuite + " with targets in " + covTargets);
+		logger.debug("Calculating coverage of test suite in classes " + Arrays.toString(tsuite) + " with targets in " + Arrays.toString(covTargets));
 		try {
 			new CoverageCalculator().displayCoverage(tsuite, covTargets, false);
 		} catch (Exception e) {
-			logger.error("Error while minimizing", e);
+			logger.error("Error while calculating coverage", e);
 			System.exit(1);
 		}
 		
@@ -138,6 +142,7 @@ public final class CoverageCalculator {
 	private HashMap<Method, ExecutionDataStore> 
 	executionDataForTheTestMethods(String testSuiteClassNames[], String[] coverageTargetClassNames, boolean verboseTestExecution) 
 	throws Exception {
+		System.setSecurityManager(new NoExitSecurityManager());
 		
 		// Now we're ready to run our instrumented class and need to startup the
 		// runtime first:
@@ -186,6 +191,8 @@ public final class CoverageCalculator {
 			}	
 		}
 		runtime.shutdown();
+		
+		System.setSecurityManager(null);
 		return coverageDataByTestMethod;
 	}
 
@@ -332,14 +339,14 @@ public final class CoverageCalculator {
 			}
 			
 			// If coverage increases, update the minimal test suite
+			logger.debug("Test method: " + testMethod); 
 			if(currBranchCov > totalBranchCov || currInstrCov > totalInstrCov) {
 				logger.debug("Coverage increases: " + 
 						totalBranchCov + " (out of " + totalRefBranchCov + ") branches and " + 
 						totalInstrCov + " (out of " + totalRefInstrCov + ") instructions" +
 						" --> " + 
 						currBranchCov  + " (out of " + currRefBranchCov + ") branches and " + 
-						currInstrCov + " (out of " + currRefInstrCov + ") instructions" +
-						"\n --> update minimal test suite with: " + testMethod);
+						currInstrCov + " (out of " + currRefInstrCov + ") instructions");
 				totalBranchCov = currBranchCov;
 				totalInstrCov = currInstrCov;
 				totalRefBranchCov = currRefBranchCov;
@@ -360,14 +367,17 @@ public final class CoverageCalculator {
 							logger.debug("-->Branch :" + cc.getLine(i).getBranchCounter().getTotalCount());
 					}
 				}
-
+			} else {
+				logger.debug("Coverage does not increase: " + 
+						currBranchCov  + " (out of " + currRefBranchCov + ") branches and " + 
+						currInstrCov + " (out of " + currRefInstrCov + ") instructions");
 			}
 		}
 		logger.info("Analyzed data for " + methodCount + " test cases");
 		logger.debug("...with " + methodWithErrorsCount + " errors");
 		logger.info("In total covered " + 
 				totalBranchCov + " (out of " + totalRefBranchCov + ") branches");
-		logger.info("In total covered " + 
+		logger.debug("In total covered " + 
 				totalInstrCov + " (out of " + totalRefInstrCov + ") instructions");
 	}
 	
@@ -469,6 +479,25 @@ public final class CoverageCalculator {
 			logger.debug("Delegating (not instrumenting) " + name);
 			return super.loadClass(name, resolve);
 		}
-
+	}
+	
+	private static class ExitException extends SecurityException {
+		private static final long serialVersionUID = 6328690905970098721L;		
+	}
+	
+	/**
+	 * http://stackoverflow.com/questions/309396
+	 */
+	private static class NoExitSecurityManager extends SecurityManager {
+		@Override
+		public void checkPermission(Permission perm) { }
+		@Override
+		public void checkPermission(Permission perm, Object context) { }
+		
+		@Override
+		public void checkExit(int status) {
+			super.checkExit(status);
+			throw new ExitException();
+		}
 	}
 }
