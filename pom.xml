@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>sushi</groupId>
+  <artifactId>sushi-runtime</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <packaging>jar</packaging>
+  <description>Runtime library for the SUSHI test case generator</description>
+  <url>https://github.com/pietrobraione/sushi</url>
+
+  <issueManagement>
+    <system>Github</system>
+    <url>https://github.com/pietrobraione/sushi-lib/issues</url>
+  </issueManagement>
+
+  <scm>
+    <connection>scm:git:https://github.com/pietrobraione/sushi-lib.git</connection>
+    <developerConnection>scm:git:https://github.com/pietrobraione/sushi-lib.git</developerConnection>
+    <url>https://github.com/pietrobraione/sushi-lib/tree/master</url>
+  </scm>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.jacoco</groupId>
+      <artifactId>org.jacoco.core</artifactId>
+      <version>0.7.5.201505241946</version>
+    </dependency>
+    <dependency>
+      <groupId>args4j</groupId>
+      <artifactId>args4j</artifactId>
+      <version>2.32</version>
+    </dependency>
+    <dependency>
+      <groupId>jbse</groupId>
+      <artifactId>jbse</artifactId>
+      <version>0.8.0-SNAPSHOT</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>3.6.1</version>
+          <configuration>
+          <useIncrementalCompilation>false</useIncrementalCompilation>
+          <source>1.8</source>
+          <target>1.8</target>
+          <encoding>${project.build.sourceEncoding}</encoding>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-eclipse-plugin</artifactId>
+          <version>2.10</version>
+          <configuration>
+            <downloadSources>true</downloadSources>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+  </properties>
+
+</project>
