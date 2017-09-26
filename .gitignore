@@ -1,2 +1,7 @@
 /bin/
+/.README.md.html
+/.DS_Store
+/.classpath
+/.project
+/.settings/
 /target/
