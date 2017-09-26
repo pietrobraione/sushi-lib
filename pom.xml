@@ -3,8 +3,8 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>sushi</groupId>
-  <artifactId>sushi-runtime</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <artifactId>sushi-lib</artifactId>
+  <version>0.2.0-SNAPSHOT</version>
   <packaging>jar</packaging>
   <description>Runtime library for the SUSHI test case generator</description>
   <url>https://github.com/pietrobraione/sushi</url>
