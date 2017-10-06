@@ -43,6 +43,8 @@ public class Options {
 			usage = "Java signature of the class for which the tests must be generated (default: none, either this or the -target_method option must be specified)")
 	private String targetClassSignature;
 	
+	/* TODO -target_package? */
+	
 	@Option(name = "-visibility",
 			usage = "For which methods defined in the class should generate tests: PUBLIC (public methods), PACKAGE (public, protected and package methods)")
 	private Visibility visibility = Visibility.PUBLIC;
@@ -86,9 +88,13 @@ public class Options {
 	private Path jrePath = Paths.get(".", "data", "jre", "rt.jar");
 	
 	@Option(name = "-evosuite",
-			usage = "Path to Evosuite",
+			usage = "Path to Evosuite jar",
 			handler = PathOptionHandler.class)
 	private Path evosuitePath = Paths.get(".", "lib", "evosuite.jar");
+	
+	@Option(name = "-use_mosa",
+			usage = "Set to true if you want to use MOSA, false for ordinary EvoSuite")
+	private boolean useMOSA = false;
 	
 	@Option(name = "-sushi_lib",
 			usage = "Path to Sushi library",
@@ -260,6 +266,14 @@ public class Options {
 	
 	public void setEvosuitePath(Path evosuitePath) {
 		this.evosuitePath = evosuitePath;
+	}
+	
+	public boolean getUseMOSA() {
+		return this.useMOSA;
+	}
+	
+	public void setUseMOSA(boolean useMOSA) {
+		this.useMOSA = useMOSA;
 	}
 	
 	public Path getSushiLibPath() {
