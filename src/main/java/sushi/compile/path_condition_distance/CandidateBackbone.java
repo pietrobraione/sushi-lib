@@ -106,9 +106,16 @@ public class CandidateBackbone {
 			if (invalidFieldPaths.contains(originPrefix)) {
 				throw new FieldDependsOnInvalidFieldPathException(originPrefix);
 			}
-
 			originPrefix += "." +  fields[i];
-			if (obj.getClass().isArray()) {
+			
+			if ("hashCode()".equals(fields[i])) {
+				try {
+					obj = Object.class.getMethod("hashCode").invoke(obj);
+				} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException
+						| NoSuchMethodException | SecurityException e) {
+					throw new RuntimeException(e);
+				}
+			} else if (obj.getClass().isArray()) {
 				obj = retrieveFromArray(obj, fields[i], candidateObjects);
 			} else {
 				Object hack = hack4StringJava6(obj, fields[i]); //GIO: TODO
