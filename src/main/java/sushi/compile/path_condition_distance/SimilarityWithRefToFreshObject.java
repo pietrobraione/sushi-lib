@@ -1,6 +1,5 @@
 package sushi.compile.path_condition_distance;
 
-import sushi.compile.distance.LevenshteinDistance;
 import sushi.compile.distance.PrefixDistance;
 import sushi.logging.Logger;
 
@@ -68,7 +67,7 @@ public class SimilarityWithRefToFreshObject extends SimilarityWithRef {
 			similarity += InverseDistances.inverseDistanceExp(packageDistance, samePackageSimilarity);
 			if (packageDistance == 0) {
 				logger.debug("The packages are the same");
-				double classNameDistance = LevenshteinDistance.calculateDistance(classNameTarget, classNameCandidate);
+				double classNameDistance = PrefixDistance.calculateDistance(classNameTarget, classNameCandidate);
 				similarity += InverseDistances.inverseDistanceExp(classNameDistance, sameClassSimilarity);
 			}
 		}
