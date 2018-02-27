@@ -1410,6 +1410,23 @@ public final class JBSEParameters implements Cloneable {
 	}
 	
 	/**
+	 * Relevant only when {@link #setStepShowMode(StepShowMode)}
+	 * is set to {@link StepShowMode#LEAVES} or 
+	 * {@link StepShowMode#SUMMARIES} to further filter
+	 * which leaves/summaries must be shown.
+	 * 
+	 * @param show {@code true} iff the leaves/summaries 
+	 *        of unmanageable traces must be shown.
+	 */
+	public void setShowUnmanageable(boolean show) {
+		if (show) {
+			this.tracesToShow.add(TraceTypes.UNMANAGEABLE);
+		} else {
+			this.tracesToShow.remove(TraceTypes.UNMANAGEABLE);
+		}
+	}
+	
+	/**
 	 * Returns the traces types to be shown.
 	 * 
 	 * @return an {@link EnumSet}{@code <}{@link TraceTypes}{@code >}
