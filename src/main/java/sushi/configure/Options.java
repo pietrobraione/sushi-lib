@@ -26,7 +26,8 @@ public class Options {
 	}
 
 	@Option(name = "-help",
-			usage = "Prints usage and exits")
+			usage = "Prints usage and exits",
+			help = true)
 	private boolean help = false;
 
 	@Option(name = "-classes",
@@ -36,13 +37,13 @@ public class Options {
 	
 	@Option(name = "-target_method",
 			forbids = {"-target_class", "-params_modifier_class"},
-			usage = "Java signature of the method for which the tests must be generated (default: none, either this or the -target_class option must be specified)",
+			usage = "Java signature of the method for which the tests must be generated (default: none, either this or the -target_class option or the -params_modifier_class option must be specified)",
 			handler = SignatureHandler.class)
 	private List<String> targetMethodSignature;
 	
 	@Option(name = "-target_class",
 			forbids = {"-target_method", "-params_modifier_class"},
-			usage = "Java signature of the class for which the tests must be generated (default: none, either this or the -target_method option must be specified)")
+			usage = "Java signature of the class for which the tests must be generated (default: none, either this or the -target_method option or the -params_modifier_class option must be specified)")
 	private String targetClassSignature;
 	
 	/* TODO -target_package? */
@@ -156,7 +157,7 @@ public class Options {
 	@Option(name = "-params_modifier_class",
 			forbids = {"-target_class", "-target_method"},
 			depends = {"-params_modifier_path"},
-			usage = "Parameters modifier class name (default: none)")
+			usage = "Parameters modifier class name (default: none, either this or the -target_class option or the -target_method option must be specified)")
 	private String paramsClass;
 
 	private Options() { }
