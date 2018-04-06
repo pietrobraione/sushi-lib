@@ -107,7 +107,7 @@ public final class CoverageCalculator {
 			}
 			File[] javaFiles = sourceFolder.listFiles(new FilenameFilter() {
 				public boolean accept(File dir, String name) {
-					return name.endsWith(".java") && name.contains("Test");
+					return name.endsWith(".java") && name.contains("Test") && !name.contains("scaffolding");
 				}
 
 			});
