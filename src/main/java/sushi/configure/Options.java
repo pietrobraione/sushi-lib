@@ -35,11 +35,13 @@ public class Options {
 	private List<Path> classesPath = Collections.singletonList(Paths.get("."));
 	
 	@Option(name = "-target_method",
+			forbids = {"-target_class", "-params_modifier_class"},
 			usage = "Java signature of the method for which the tests must be generated (default: none, either this or the -target_class option must be specified)",
 			handler = SignatureHandler.class)
 	private List<String> targetMethodSignature;
 	
 	@Option(name = "-target_class",
+			forbids = {"-target_method", "-params_modifier_class"},
 			usage = "Java signature of the class for which the tests must be generated (default: none, either this or the -target_method option must be specified)")
 	private String targetClassSignature;
 	
@@ -152,11 +154,22 @@ public class Options {
 	private Path paramsHome = Paths.get(".", "params");
 	
 	@Option(name = "-params_modifier_class",
+			forbids = {"-target_class", "-target_method"},
+			depends = {"-params_modifier_path"},
 			usage = "Parameters modifier class name (default: none)")
 	private String paramsClass;
 
 	private Options() { }
 	
+	public boolean isConsistent() {
+		if (paramsClass == null &&
+			targetClassSignature == null &&
+			targetMethodSignature == null) {
+			return false;
+		}
+		return true;
+	}
+
 	public boolean getHelp() {
 		return this.help;
 	}
