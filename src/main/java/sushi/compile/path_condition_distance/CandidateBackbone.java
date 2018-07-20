@@ -81,14 +81,14 @@ public class CandidateBackbone {
 		fields = rearrangeFieldsStringsWrtArrayAccesses(fields);
 		
 		String originPrefix = fields[0];
-		boolean isStatic = originPrefix.matches("\\[.*\\]");
+		boolean isStatic = originPrefix.matches("\\[\\(.*,.*\\)\\]");
 		if (!isStatic && !candidateObjects.containsKey(originPrefix)) {
 			throw new SimilarityComputationException("Origin " + originPrefix + " does not correspond to any root object in candidate");
 		}
 		
 		if (isStatic) {
 			try {
-				final String className = originPrefix.substring(1, originPrefix.length() - 1).replace('/', '.');
+				final String className = originPrefix.substring(originPrefix.indexOf(',') + 1, originPrefix.length() - 2).replace('/', '.');
 				final Field f = Class.forName(className).getDeclaredField(fields[1]);
 				f.setAccessible(true);
 				obj = f.get(null);
