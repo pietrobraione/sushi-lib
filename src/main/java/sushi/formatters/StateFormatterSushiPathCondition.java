@@ -24,7 +24,9 @@ import jbse.mem.ClauseAssumeReferenceSymbolic;
 import jbse.mem.Objekt;
 import jbse.mem.State;
 import jbse.mem.exc.FrozenStateException;
+import jbse.rewr.CalculatorRewriting;
 import jbse.val.Any;
+import jbse.val.Calculator;
 import jbse.val.Expression;
 import jbse.val.NarrowingConversion;
 import jbse.val.Operator;
@@ -146,6 +148,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 		private final StringBuilder s;
 		private final HashMap<Symbolic, String> symbolsToVariables = new HashMap<>();
 		private final ArrayList<String> evoSuiteInputVariables = new ArrayList<>();
+		private final Calculator calc = new CalculatorRewriting(); //dummy
 		private boolean panic = false;
 
 		MethodUnderTest(StringBuilder s, State initialState, State finalState, int testCounter) 
@@ -595,11 +598,11 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 								final Primitive first = assumptionWithNoNegation.remove(0);
 								operandExp.getSecondOperand().not().accept(this);
 								final Primitive second = assumptionWithNoNegation.remove(0);
-								assumptionWithNoNegation.add(Expression.makeExpressionBinary(null, first, dual(operator), second));
+								assumptionWithNoNegation.add(Expression.makeExpressionBinary(MethodUnderTest.this.calc, first, dual(operator), second));
 							} else if (operator.equals(Operator.GT) || operator.equals(Operator.GE) ||
 									operator.equals(Operator.LT) || operator.equals(Operator.LE) ||
 									operator.equals(Operator.EQ) || operator.equals(Operator.NE)) {
-								assumptionWithNoNegation.add(Expression.makeExpressionBinary(null, operandExp.getFirstOperand(), dual(operator), operandExp.getSecondOperand()));
+								assumptionWithNoNegation.add(Expression.makeExpressionBinary(MethodUnderTest.this.calc, operandExp.getFirstOperand(), dual(operator), operandExp.getSecondOperand()));
 							} else {
 								//can't do anything for this expression
 								assumptionWithNoNegation.add(e);
@@ -618,7 +621,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 						final Primitive first = assumptionWithNoNegation.remove(0);
 						e.getSecondOperand().accept(this);
 						final Primitive second = assumptionWithNoNegation.remove(0);
-						assumptionWithNoNegation.add(Expression.makeExpressionBinary(null, first, operator, second));
+						assumptionWithNoNegation.add(Expression.makeExpressionBinary(MethodUnderTest.this.calc, first, operator, second));
 					}
 				}
 
@@ -633,7 +636,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 							newArgs.add(arg);
 						}
 					}
-					assumptionWithNoNegation.add(new PrimitiveSymbolicApply(x.getType(), x.historyPoint(), null, x.getOperator(), newArgs.toArray(new Value[0])));
+					assumptionWithNoNegation.add(new PrimitiveSymbolicApply(x.getType(), x.historyPoint(), MethodUnderTest.this.calc, x.getOperator(), newArgs.toArray(new Value[0])));
 				}
 
 				@Override
