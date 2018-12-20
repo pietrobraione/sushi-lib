@@ -4,9 +4,10 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import sun.misc.Unsafe;
 
+@SuppressWarnings("restriction")
 public class Allocator {
 	private static final Allocator INSTANCE = new Allocator();
-    private static final Unsafe UNSAFE; //ugly!
+	private static final Unsafe UNSAFE; //ugly!
     static {
         final Field uns;
         try {
