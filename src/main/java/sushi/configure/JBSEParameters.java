@@ -1,5 +1,6 @@
 package sushi.configure;
 
+import java.io.IOException;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -297,8 +298,9 @@ public final class JBSEParameters implements Cloneable {
 	 * Returns the symbolic execution's classpath.
 	 * 
 	 * @return a {@link Classpath} object. 
+	 * @throws IOException if an I/O error occurs while scanning the classpath.
 	 */
-	public Classpath getClasspath() {
+	public Classpath getClasspath() throws IOException {
 		return this.runnerParameters.getClasspath();
 	}
 
