@@ -15,9 +15,9 @@ repositories {
 }
 
 dependencies {
-    compile 'org.jacoco:org.jacoco.core:0.7.5.201505241946'
-    compile 'args4j:args4j:2.32'
-    compile 'jbse:jbse:0.9.0-SNAPSHOT'
+    implementation 'org.jacoco:org.jacoco.core:0.7.5.201505241946'
+    implementation 'args4j:args4j:2.32'
+    implementation project(':jbse')
 }
 
 group = 'sushi'
