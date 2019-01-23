@@ -446,7 +446,7 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
         }
                 
         private String generateName(String name) {
-            return name.replace("{ROOT}:", "__ROOT_");
+            return name.replace("{ROOT}:", "__ROOT_").replaceAll("_PARAM\\[(\\d+)\\]", "_PARAM_$1_");
         }
         
         private void makeVariableFor(Symbolic symbol) {
