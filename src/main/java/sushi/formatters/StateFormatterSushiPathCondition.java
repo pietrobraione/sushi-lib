@@ -397,11 +397,11 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 		}
 
 		private String generateVarNameFromOrigin(String name) {
-			return name.replace("{ROOT}:", "__ROOT_");
+			return name.replace("{ROOT}:", "__ROOT_").replaceAll("_PARAM\\[(\\d+)\\]", "_PARAM_$1_");
 		}
 
 		private String generateOriginFromVarName(String name) {
-			return name.replace("__ROOT_", "{ROOT}:");
+			return name.replaceAll("_PARAM_(\\d+)_", "_PARAM\\[$1\\]").replace("__ROOT_", "{ROOT}:");
 		}
 
 		private void makeVariableFor(Symbolic symbol) {
