@@ -3,14 +3,11 @@ package sushi.configure;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
 import org.kohsuke.args4j.Option;
-import org.kohsuke.args4j.spi.MultiPathOptionHandler;
 import org.kohsuke.args4j.spi.PathOptionHandler;
 
 import sushi.logging.Level;
@@ -33,8 +30,8 @@ public class Options {
 
 	@Option(name = "-classes",
 			usage = "Classpath of the project to analyze",
-			handler = MultiPathOptionHandler.class)
-	private List<Path> classesPath = new ArrayList<>(Collections.singletonList(Paths.get(".")));
+			handler = MultiPathOptionHandlerPatched.class)
+	private List<Path> classesPath;
 	
 	@Option(name = "-target_method",
 			forbids = {"-target_class", "-params_modifier_class"},

@@ -42,6 +42,13 @@ public class SignatureHandler extends DelimitedOptionHandler<String> {
 		return super.parseArguments(params);
 	}
 	
+    @Override
+    public String getDefaultMetaVariable() {
+        final String tMetaVar = individualOptionHandler.getDefaultMetaVariable();
+        if (tMetaVar == null || tMetaVar.trim().isEmpty()) return tMetaVar;
+        return "<" + tMetaVar  + delimiter + tMetaVar + delimiter + tMetaVar + ">";
+    }
+	
 	//bug workaround
 	@Override
 	public String printDefaultValue() {
