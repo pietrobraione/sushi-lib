@@ -52,7 +52,7 @@ public class Options {
 	
 	@Option(name = "-cov",
 			usage = "Coverage: PATHS (all paths), BRANCHES (all branches), UNSAFE (failed assertion, works for only one assertion)")
-	private Coverage coverage = Coverage.PATHS;
+	private Coverage coverage = Coverage.BRANCHES;
 	
 	@Option(name = "-tmp_base",
 			usage = "Base directory where the temporary subdirectory is found or created",
