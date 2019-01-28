@@ -1,0 +1,26 @@
+plugins {
+    id 'java'
+    id 'maven'
+    id 'eclipse'
+}
+
+repositories {
+    mavenLocal()
+    maven {
+        url = 'http://repo.maven.apache.org/maven2'
+    }
+}
+
+dependencies {
+    implementation 'org.jacoco:org.jacoco.core:0.7.5.201505241946' //note that it transitively depends on org.ow2.asm:asm-debug-all
+    implementation 'args4j:args4j:2.32'
+    implementation project(':jbse')
+}
+
+group = 'sushi'
+version = '0.2.0-SNAPSHOT'
+sourceCompatibility = '1.8'
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}

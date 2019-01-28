@@ -4,12 +4,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
 import org.kohsuke.args4j.Option;
-import org.kohsuke.args4j.spi.MultiPathOptionHandler;
 import org.kohsuke.args4j.spi.PathOptionHandler;
 
 import sushi.logging.Level;
@@ -32,8 +30,8 @@ public class Options {
 
 	@Option(name = "-classes",
 			usage = "Classpath of the project to analyze",
-			handler = MultiPathOptionHandler.class)
-	private List<Path> classesPath = Collections.singletonList(Paths.get("."));
+			handler = MultiPathOptionHandlerPatched.class)
+	private List<Path> classesPath;
 	
 	@Option(name = "-target_method",
 			forbids = {"-target_class", "-params_modifier_class"},
@@ -54,7 +52,7 @@ public class Options {
 	
 	@Option(name = "-cov",
 			usage = "Coverage: PATHS (all paths), BRANCHES (all branches), UNSAFE (failed assertion, works for only one assertion)")
-	private Coverage coverage = Coverage.PATHS;
+	private Coverage coverage = Coverage.BRANCHES;
 	
 	@Option(name = "-tmp_base",
 			usage = "Base directory where the temporary subdirectory is found or created",
@@ -71,9 +69,9 @@ public class Options {
 	private Path outDir = Paths.get(".", "out");
 
 	@Option(name = "-z3",
-			usage = "Path to Z3 binary (default: none, expect Z3 on the system PATH)",
+			usage = "Path to Z3 binary",
 			handler = PathOptionHandler.class)
-	private Path z3Path;
+	private Path z3Path = Paths.get("/usr", "bin", "z3");
 	
 	@Option(name = "-java8_home",
 			usage = "Path to Java 8 home (default: none, expect Java executables on the system PATH)",

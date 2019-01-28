@@ -1,6 +1,7 @@
 package sushi.logging;
 
 import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -45,15 +46,19 @@ public class Logger {
 	}
 
 	private synchronized void print(final Level level, final String message, final Throwable t) {
-		if(level.ordinal() >= Logger.level.ordinal()) {
-			final PrintStream stream = System.out;
-			final Date now = new Date();
-			stream.format("%s %-5s - %s", this.dateFmt.format(now), level.name(), message);
-			stream.println();
-			if (t != null) {
-				t.printStackTrace(stream);
+		if (level.ordinal() >= Logger.level.ordinal()) {
+			try {
+				final PrintStream stream = new PrintStream(System.out, true, "UTF-8");
+				final Date now = new Date();
+				stream.format("%s %-5s - %s", this.dateFmt.format(now), level.name(), message);
+				stream.println();
+				if (t != null) {
+					t.printStackTrace(stream);
+				}
+				stream.flush();
+			} catch (UnsupportedEncodingException e) {
+				throw new RuntimeException(e);
 			}
-			stream.flush();
 		}
 	}
 }

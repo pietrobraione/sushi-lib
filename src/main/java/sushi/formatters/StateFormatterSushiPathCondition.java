@@ -125,14 +125,14 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 	private static final String INDENT_3 = INDENT_1 + INDENT_2;
 	private static final String INDENT_4 = INDENT_1 + INDENT_3;
 	private static final String PROLOGUE_1 =
-			"import static sushi.compile.path_condition_distance.DistanceBySimilarityWithPathCondition.distance;\n" +
+			"import static " + sushi.compile.path_condition_distance.DistanceBySimilarityWithPathCondition.class.getName() + ".distance;\n" +
 			"\n" +
 			"import static java.lang.Double.*;\n" +
 			"import static java.lang.Math.*;\n" +
 			"\n" +
-			"import sushi.compile.path_condition_distance.*;\n" +
-			"import sushi.logging.Level;\n" +
-			"import sushi.logging.Logger;\n" +
+			"import "+ sushi.compile.path_condition_distance.DistanceBySimilarityWithPathCondition.class.getPackage().getName() + ".*;\n" +
+			"import " + sushi.logging.Level.class.getName() + ";\n" +
+			"import " + sushi.logging.Logger.class.getName() + ";\n" +
 			"\n" +
 			"import java.util.ArrayList;\n" +
 			"import java.util.HashMap;\n" +
@@ -397,11 +397,11 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 		}
 
 		private String generateVarNameFromOrigin(String name) {
-			return name.replace("{ROOT}:", "__ROOT_");
+			return name.replace("{ROOT}:", "__ROOT_").replaceAll("_PARAM\\[(\\d+)\\]", "_PARAM_$1_");
 		}
 
 		private String generateOriginFromVarName(String name) {
-			return name.replace("__ROOT_", "{ROOT}:");
+			return name.replaceAll("_PARAM_(\\d+)_", "_PARAM\\[$1\\]").replace("__ROOT_", "{ROOT}:");
 		}
 
 		private void makeVariableFor(Symbolic symbol) {

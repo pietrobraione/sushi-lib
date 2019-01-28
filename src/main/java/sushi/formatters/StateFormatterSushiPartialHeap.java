@@ -125,13 +125,13 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
     }
     
     private static final String PROLOGUE =
-        "import static sushi.compile.distance.Distance.distance;\n" +
+        "import static " + sushi.compile.distance.Distance.class.getName() + ".distance;\n" +
         "\n" +
-        "import sushi.compile.reflection.Allocator;\n" +
-        "import sushi.compile.reflection.AccessibleObject;\n" +
-        "import sushi.compile.reflection.ObjectField;\n" +
-        "import sushi.logging.Level;\n" +
-        "import sushi.logging.Logger;\n" +
+        "import " + sushi.compile.reflection.Allocator.class.getName() + ";\n" +
+        "import " + sushi.compile.reflection.AccessibleObject.class.getName() + ";\n" +
+        "import " + sushi.compile.reflection.ObjectField.class.getName() + ";\n" +
+        "import " + sushi.logging.Level.class.getName() + ";\n" +
+        "import " + sushi.logging.Logger.class.getName() + ";\n" +
         "\n" +
         "import java.util.HashSet;\n" +
         "\n" +
@@ -446,7 +446,7 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
         }
                 
         private String generateName(String name) {
-            return name.replace("{ROOT}:", "__ROOT_");
+            return name.replace("{ROOT}:", "__ROOT_").replaceAll("_PARAM\\[(\\d+)\\]", "_PARAM_$1_");
         }
         
         private void makeVariableFor(Symbolic symbol) {
