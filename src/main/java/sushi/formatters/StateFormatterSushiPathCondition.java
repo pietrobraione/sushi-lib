@@ -1,9 +1,13 @@
 package sushi.formatters;
 
+import static jbse.bc.ClassLoaders.CLASSLOADER_APP;
 import static jbse.common.Type.className;
+import static jbse.common.Type.isPrimitive;
 import static jbse.common.Type.isReference;
+import static jbse.common.Type.splitReturnValueDescriptor;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -13,14 +17,24 @@ import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import jbse.bc.ClassFile;
+import jbse.bc.Signature;
+import jbse.bc.exc.BadClassFileVersionException;
+import jbse.bc.exc.ClassFileIllFormedException;
+import jbse.bc.exc.ClassFileNotAccessibleException;
+import jbse.bc.exc.ClassFileNotFoundException;
+import jbse.bc.exc.IncompatibleClassFileException;
+import jbse.bc.exc.MethodNotFoundException;
+import jbse.bc.exc.PleaseLoadClassException;
+import jbse.bc.exc.WrongClassNameException;
 import jbse.common.Type;
+import jbse.common.exc.InvalidInputException;
 import jbse.common.exc.UnexpectedInternalException;
 import jbse.mem.Clause;
 import jbse.mem.ClauseAssume;
 import jbse.mem.ClauseAssumeAliases;
 import jbse.mem.ClauseAssumeExpands;
 import jbse.mem.ClauseAssumeNull;
-import jbse.mem.ClauseAssumeReferenceSymbolic;
 import jbse.mem.Objekt;
 import jbse.mem.State;
 import jbse.mem.exc.FrozenStateException;
@@ -29,15 +43,22 @@ import jbse.val.Any;
 import jbse.val.Calculator;
 import jbse.val.Expression;
 import jbse.val.NarrowingConversion;
+import jbse.val.Null;
 import jbse.val.Operator;
 import jbse.val.Primitive;
-import jbse.val.PrimitiveSymbolic;
 import jbse.val.PrimitiveSymbolicApply;
 import jbse.val.PrimitiveSymbolicAtomic;
 import jbse.val.PrimitiveVisitor;
+import jbse.val.Reference;
 import jbse.val.ReferenceSymbolic;
+import jbse.val.ReferenceSymbolicApply;
+import jbse.val.ReferenceSymbolicAtomic;
+import jbse.val.ReferenceSymbolicLocalVariable;
+import jbse.val.ReferenceSymbolicMemberArray;
+import jbse.val.ReferenceSymbolicMemberField;
 import jbse.val.Simplex;
 import jbse.val.Symbolic;
+import jbse.val.SymbolicApply;
 import jbse.val.Term;
 import jbse.val.Value;
 import jbse.val.WideningConversion;
@@ -147,17 +168,19 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 	private static class MethodUnderTest {
 		private final StringBuilder s;
 		private final HashMap<Symbolic, String> symbolsToVariables = new HashMap<>();
-		private final ArrayList<String> evoSuiteInputVariables = new ArrayList<>();
+		private final HashMap<String, Symbolic> variablesToSymbols = new HashMap<>();
+		private final ArrayList<String> inputVariables = new ArrayList<>();
+		private final ArrayList<SymbolicApply> functionApplications = new ArrayList<>();
 		private final Calculator calc = new CalculatorRewriting(); //dummy
 		private boolean panic = false;
 
 		MethodUnderTest(StringBuilder s, State initialState, State finalState, int testCounter) 
 		throws FrozenStateException {
 			this.s = s;
-			makeVariables(finalState);
 			appendMethodDeclaration(initialState, finalState, testCounter);
 			appendPathCondition(finalState, testCounter);
-			appendIfStatement(initialState, finalState, testCounter);
+			appendCandidateObjects(finalState, testCounter);
+			appendIfStatement(testCounter);
 			appendMethodEnd(finalState, testCounter);
 		}
 
@@ -169,8 +192,8 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			final List<Symbolic> inputs;
 			try {
 				inputs = initialState.getStack().get(0).localVariables().values().stream()
-						.filter((v) -> v.getValue() instanceof Symbolic)
-						.map((v) -> (Symbolic) v.getValue())
+						.filter(v -> v.getValue() instanceof Symbolic)
+						.map(v -> (Symbolic) v.getValue())
 						.collect(Collectors.toList());
 			} catch (IndexOutOfBoundsException | FrozenStateException e) {
 				throw new UnexpectedInternalException(e);
@@ -184,18 +207,13 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			for (Symbolic symbol : inputs) {
 				makeVariableFor(symbol);
 				final String varName = getVariableFor(symbol);
-				this.evoSuiteInputVariables.add(varName);
+				this.inputVariables.add(varName);
 				if (firstDone) {
 					this.s.append(", ");
 				} else {
 					firstDone = true;
 				}
-				final String type;
-				if (symbol instanceof ReferenceSymbolic) {
-					type = javaClass(((ReferenceSymbolic) symbol).getStaticType(), true);
-				} else {
-					type = javaPrimitiveType(((PrimitiveSymbolic) symbol).getType());
-				}
+				final String type = javaType(symbol);
 				this.s.append(type);
 				this.s.append(' ');
 				this.s.append(varName);
@@ -221,52 +239,259 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			final Collection<Clause> pathCondition = finalState.getPathCondition();
 			for (Iterator<Clause> iterator = pathCondition.iterator(); iterator.hasNext(); ) {
 				final Clause clause = iterator.next();
-				this.s.append(INDENT_2);
-				this.s.append("// "); //comment
-				this.s.append(clause.toString());
-				this.s.append("\n");
 				if (clause instanceof ClauseAssumeExpands) {
+					this.s.append(INDENT_2);
+					this.s.append("// "); //comment
+					this.s.append(clause.toString());
+					this.s.append("\n");
 					final ClauseAssumeExpands clauseExpands = (ClauseAssumeExpands) clause;
-					final Symbolic symbol = clauseExpands.getReference();
+					final ReferenceSymbolic symbol = clauseExpands.getReference();
 					final long heapPosition = clauseExpands.getHeapPosition();
 					setWithNewObject(finalState, symbol, heapPosition);
+					if (symbol instanceof ReferenceSymbolicApply) {
+						this.functionApplications.add((ReferenceSymbolicApply) symbol);
+					}
 				} else if (clause instanceof ClauseAssumeNull) {
+					this.s.append(INDENT_2);
+					this.s.append("// "); //comment
+					this.s.append(clause.toString());
+					this.s.append("\n");
 					final ClauseAssumeNull clauseNull = (ClauseAssumeNull) clause;
 					final ReferenceSymbolic symbol = clauseNull.getReference();
 					setWithNull(symbol);
+					if (symbol instanceof ReferenceSymbolicApply) {
+						this.functionApplications.add((ReferenceSymbolicApply) symbol);
+					}
 				} else if (clause instanceof ClauseAssumeAliases) {
+					this.s.append(INDENT_2);
+					this.s.append("// "); //comment
+					this.s.append(clause.toString());
+					this.s.append("\n");
 					final ClauseAssumeAliases clauseAliases = (ClauseAssumeAliases) clause;
-					final Symbolic symbol = clauseAliases.getReference();
+					final ReferenceSymbolic symbol = clauseAliases.getReference();
 					final long heapPosition = clauseAliases.getHeapPosition();
 					setWithAlias(finalState, symbol, heapPosition);
+					if (symbol instanceof ReferenceSymbolicApply) {
+						this.functionApplications.add((ReferenceSymbolicApply) symbol);
+					}
 				} else if (clause instanceof ClauseAssume) {
+					this.s.append(INDENT_2);
+					this.s.append("// "); //comment
+					this.s.append(clause.toString());
+					this.s.append("\n");
 					final ClauseAssume clauseAssume = (ClauseAssume) clause;
 					final Primitive assumption = clauseAssume.getCondition();
-					setNumericAssumption(assumption);
-				} else {
-					this.s.append(INDENT_2);
-					this.s.append(';');
-					this.s.append('\n');
-				}
+					setNumericAssumption(finalState, assumption);
+				} //else, do nothing
 			}
 			this.s.append("\n");
 		}
 
-		private void appendIfStatement(State initialState, State finalState, int testCounter) {
+		private void appendCandidateObjects(State finalState, int testCounter) {
 			if (this.panic) {
 				return;
 			}
 			this.s.append(INDENT_2);
 			this.s.append("final HashMap<String, Object> candidateObjects = new HashMap<>();\n");
-			for (String inputVariable : this.evoSuiteInputVariables) {
+			for (String inputVariable : this.inputVariables) {
 				this.s.append(INDENT_2);
 				this.s.append("candidateObjects.put(\"");
-				this.s.append(generateOriginFromVarName(inputVariable));
+				this.s.append(getSymbolFor(inputVariable).asOriginString());
 				this.s.append("\", ");
 				this.s.append(inputVariable);
 				this.s.append(");\n");
+			}			
+			for (SymbolicApply functionApplication : this.functionApplications) {
+				final String[] sig = functionApplication.getOperator().split(":");
+				final String returnType = splitReturnValueDescriptor(sig[1]);
+				final String javaReturnType = (isPrimitive(returnType) ? javaPrimitiveType(returnType.charAt(0)) : javaClass(returnType, true));
+				this.s.append(INDENT_2);
+				this.s.append("final ");
+				this.s.append(javaReturnType);
+				this.s.append(' ');
+				makeVariableFor(functionApplication);
+				this.s.append(getVariableFor(functionApplication));
+				this.s.append(" = ");
+				
+				final ClassFile cf;
+				final boolean isStatic;
+				try {
+					cf = finalState.getClassHierarchy().loadCreateClass(CLASSLOADER_APP, sig[0], true);
+					isStatic = cf.isMethodStatic(new Signature(sig[0], sig[1], sig[2]));
+				} catch (MethodNotFoundException | InvalidInputException | ClassFileNotFoundException | 
+						 ClassFileIllFormedException | ClassFileNotAccessibleException | IncompatibleClassFileException | 
+						 BadClassFileVersionException | WrongClassNameException | PleaseLoadClassException e) {
+					//this should never happen
+					throw new RuntimeException(e);
+				}
+				final Value[] args;
+				if (isStatic) {
+					this.s.append(javaClass(sig[0], true));
+					this.s.append(".");
+					args = functionApplication.getArgs();
+				} else {
+					this.s.append(translateArg(functionApplication.getArgs()[0]));
+					this.s.append(".");
+					args = Arrays.copyOfRange(functionApplication.getArgs(), 1, functionApplication.getArgs().length);
+				}
+				this.s.append(sig[2]);
+				this.s.append("(");
+				
+				boolean firstDone = false;
+				for (Value v : args) {
+					if (firstDone) {
+						this.s.append(", ");
+					} else {
+						firstDone = true;
+					}
+					this.s.append(translateArg(v));
+				}
+				this.s.append(");\n");
+				this.s.append(INDENT_2);
+				this.s.append("candidateObjects.put(\"");
+				this.s.append(functionApplication.asOriginString());
+				this.s.append("\", ");
+				this.s.append(getVariableFor(functionApplication));
+				this.s.append(");\n");
 			}
 			this.s.append('\n');
+		}
+		
+		private class PrimitiveArgTranslator implements PrimitiveVisitor {
+			String translation;
+			
+			@Override
+			public void visitAny(Any x) throws Exception {
+				throw new RuntimeException("Found a symbolic function application that has as arg the Any value.");								
+			}
+
+			@Override
+			public void visitExpression(Expression e) throws Exception {
+				final StringBuilder b = new StringBuilder();
+				final Operator op = e.getOperator();
+				if (e.isUnary()) {
+					e.getOperand().accept(this);
+					final String arg = this.translation;
+					b.append(op == Operator.NEG ? "-" : op.toString());
+					b.append("(");
+					b.append(arg);
+					b.append(")");
+				} else { 
+					e.getFirstOperand().accept(this);
+					final String firstArg = this.translation;
+					e.getSecondOperand().accept(this);
+					final String secondArg = this.translation;
+					b.append("(");
+					b.append(firstArg);
+					b.append(") ");
+					b.append(op.toString());
+					b.append(" (");
+					b.append(secondArg);
+					b.append(")");
+				}
+				this.translation = b.toString();
+			}
+
+			@Override
+			public void visitPrimitiveSymbolicApply(PrimitiveSymbolicApply x) throws Exception {
+				makeVariableFor(x);
+				this.translation = getVariableFor(x);
+			}
+
+			@Override
+			public void visitPrimitiveSymbolicAtomic(PrimitiveSymbolicAtomic s) throws Exception {
+				makeVariableFor(s);
+				this.translation = getVariableFor(s);
+			}
+
+			@Override
+			public void visitSimplex(Simplex x) throws Exception {
+				this.translation = x.getActualValue().toString();
+			}
+
+			@Override
+			public void visitTerm(Term x) throws Exception {
+				throw new RuntimeException("Found a symbolic function application that has as arg an uninterpreted Term: " + x.toString());								
+			}
+
+			@Override
+			public void visitNarrowingConversion(NarrowingConversion x) throws Exception {
+				x.getArg().accept(this);
+				final StringBuilder b = new StringBuilder();
+				b.append("(");
+				b.append(javaPrimitiveType(x.getType()));
+				b.append(") (");
+				b.append(this.translation);
+				b.append(")");
+				this.translation = b.toString();
+			}
+
+			@Override
+			public void visitWideningConversion(WideningConversion x) throws Exception {
+				x.getArg().accept(this);
+			}
+		};
+		
+		private StringBuilder translateArg(Value v) {
+			final StringBuilder retVal = new StringBuilder();
+			if (v instanceof Primitive) {
+				final PrimitiveArgTranslator translator = new PrimitiveArgTranslator();
+				try {
+					((Primitive) v).accept(translator);
+				} catch (RuntimeException e) {
+					//this might happen, just rethrow
+					throw e;
+				} catch (Exception e) {
+					//this should never happen
+					throw new RuntimeException(e);
+				}
+				retVal.append(translator.translation);
+			} else if (v instanceof ReferenceSymbolic) {
+				retVal.append(translateArg((ReferenceSymbolic) v));
+			} else if (v instanceof Null) {
+				retVal.append("null");
+			} else {
+        		throw new RuntimeException("Found a symbolic function application that has as arg a concrete reference of an unexpected kind of value: " + v.toString() +".");
+			}
+			return retVal;
+		}
+		
+		private StringBuilder translateArg(ReferenceSymbolic r) {
+			final StringBuilder retVal = new StringBuilder();
+			if (r instanceof ReferenceSymbolicLocalVariable) {
+				makeVariableFor(r);
+				retVal.append(getVariableFor(r));
+			} else if (r instanceof ReferenceSymbolicMemberField) {
+				final ReferenceSymbolicMemberField rf = (ReferenceSymbolicMemberField) r;
+				retVal.append(translateArg(rf.getContainer()));
+				retVal.append('.');
+				retVal.append(rf.getFieldName());
+			} else if (r instanceof ReferenceSymbolicMemberArray) {
+				final ReferenceSymbolicMemberArray ra = (ReferenceSymbolicMemberArray) r;
+				retVal.append(translateArg(ra.getContainer()));
+				retVal.append('[');
+				final PrimitiveArgTranslator translator = new PrimitiveArgTranslator();
+				try {
+					ra.getIndex().accept(translator);
+				} catch (RuntimeException e) {
+					//this might happen, just rethrow
+					throw e;
+				} catch (Exception e) {
+					//this should never happen
+					throw new RuntimeException(e);
+				}
+				retVal.append(translator.translation);
+				retVal.append(']');
+			} else if (r instanceof ReferenceSymbolicApply) {
+				makeVariableFor(r);
+				retVal.append(getVariableFor(r));
+			} else {
+				throw new RuntimeException("Unexpected reference value: " + r + ".");
+			}
+			return retVal;
+		}
+		
+		private void appendIfStatement(int testCounter) {
 			this.s.append(INDENT_2);
 			this.s.append("double d = distance(pathConditionHandler, candidateObjects);\n");
 			this.s.append(INDENT_2);
@@ -296,24 +521,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			}
 		}
 
-		private void makeVariables(State finalState) {
-			final Collection<Clause> pathCondition = finalState.getPathCondition();
-			for (Clause clause : pathCondition) {
-				if (clause instanceof ClauseAssumeReferenceSymbolic) {
-					final ClauseAssumeReferenceSymbolic clauseRef = (ClauseAssumeReferenceSymbolic) clause;
-					final ReferenceSymbolic s = clauseRef.getReference();
-					makeVariableFor(s);
-				} else if (clause instanceof ClauseAssume) {
-					final ClauseAssume clausePrim = (ClauseAssume) clause;
-					final List<PrimitiveSymbolic> symbols = symbolsIn(clausePrim.getCondition());
-					for (PrimitiveSymbolic s : symbols) {
-						makeVariableFor(s);
-					}
-				} //else do nothing
-			}
-		}
-
-		private void setWithNewObject(State finalState, Symbolic symbol, long heapPosition) 
+		private void setWithNewObject(State finalState, ReferenceSymbolic symbol, long heapPosition) 
 		throws FrozenStateException {
 			final String expansionClass = javaClass(getTypeOfObjectInHeap(finalState, heapPosition), false);
 			this.s.append(INDENT_2);
@@ -331,8 +539,8 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			this.s.append("\"));\n");
 		}
 
-		private void setWithAlias(State finalState, Symbolic symbol, long heapPosition) {
-			final String target = getOriginOfObjectInHeap(finalState, heapPosition);
+		private void setWithAlias(State finalState, ReferenceSymbolic symbol, long heapPosition) {
+			final String target = getOriginStringOfObjectInHeap(finalState, heapPosition);
 			this.s.append(INDENT_2);
 			this.s.append("pathConditionHandler.add(new SimilarityWithRefToAlias(\"");
 			this.s.append(symbol.asOriginString());
@@ -341,6 +549,19 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			this.s.append("\"));\n");
 		}
 
+		private String javaType(Symbolic symbol) {
+			if (symbol instanceof Primitive) { //either PrimitiveSymbolic or Term (however, it should never be the case of a Term)
+				final char type = ((Primitive) symbol).getType();
+				return javaPrimitiveType(type);
+			} else if (symbol instanceof ReferenceSymbolic) {
+				final String className = javaClass(((ReferenceSymbolic) symbol).getStaticType(), true);
+				return className;
+			} else {
+				//this should never happen
+				throw new RuntimeException("Reached unreachable branch while calculating the Java type of a symbol: Perhaps some type of symbol is not handled yet.");
+			}
+		}
+		
 		private String javaPrimitiveType(char type) {
 			if (type == Type.BOOLEAN) {
 				return "boolean";
@@ -359,7 +580,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			} else if (type == Type.SHORT) {
 				return "short";
 			} else {
-				return null;
+				throw new RuntimeException("Unexpected primitive type " + type + ".");
 			}
 		}
 
@@ -397,22 +618,37 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 		}
 
 		private String generateVarNameFromOrigin(String name) {
-			return name.replace("{ROOT}:", "__ROOT_").replaceAll("_PARAM\\[(\\d+)\\]", "_PARAM_$1_");
-		}
-
-		private String generateOriginFromVarName(String name) {
-			return name.replaceAll("_PARAM_(\\d+)_", "_PARAM\\[$1\\]").replace("__ROOT_", "{ROOT}:");
+			return name.replace('{', '_')
+					   .replace('}', '_')
+					   .replace('[', '_')
+					   .replace(']', '_')
+					   .replace('$', '_')
+					   .replace('@', '_')
+					   .replace('(', '_')
+					   .replace(')', '_')
+					   .replace(';', '_')
+					   .replace(':', '_')
+					   .replace('.', '_')
+					   .replace(',', '_')
+					   .replace(' ', '_')
+					   .replace('/', '_');
 		}
 
 		private void makeVariableFor(Symbolic symbol) {
-			final String origin = symbol.asOriginString();
 			if (!this.symbolsToVariables.containsKey(symbol)) {
-				this.symbolsToVariables.put(symbol, generateVarNameFromOrigin(origin));
+				final String origin = symbol.asOriginString();
+				final String varName = generateVarNameFromOrigin(origin);
+				this.symbolsToVariables.put(symbol, varName);
+				this.variablesToSymbols.put(varName, symbol);
 			}
 		}
 
 		private String getVariableFor(Symbolic symbol) {
 			return this.symbolsToVariables.get(symbol);
+		}
+		
+		private Symbolic getSymbolFor(String varName) {
+			return this.variablesToSymbols.get(varName);
 		}
 
 		private static String getTypeOfObjectInHeap(State finalState, long num) throws FrozenStateException {
@@ -421,29 +657,29 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			return o.getType().getClassName();
 		}
 
-		private String getOriginOfObjectInHeap(State finalState, long heapPos){
+		private String getOriginStringOfObjectInHeap(State finalState, long heapPos) {
 			final Collection<Clause> path = finalState.getPathCondition();
 			for (Clause clause : path) {
-				if (clause instanceof ClauseAssumeExpands) { // == Obj fresh
+				if (clause instanceof ClauseAssumeExpands) {
 					final ClauseAssumeExpands clauseExpands = (ClauseAssumeExpands) clause;
 					final long heapPosCurrent = clauseExpands.getHeapPosition();
 					if (heapPosCurrent == heapPos) {
-						return generateOriginFromVarName(getVariableFor(clauseExpands.getReference()));
+						return clauseExpands.getReference().asOriginString();
 					}
 				}
 			}
 			return null;
 		}
 
-		private void setNumericAssumption(Primitive assumption) {
-			final List<PrimitiveSymbolic> symbols = symbolsIn(assumption);
+		private void setNumericAssumption(State state, Primitive assumption) {
+			final List<Symbolic> symbols = symbolsInNumericAssumption(assumption);
 			this.s.append(INDENT_2);
 			this.s.append("valueCalculator = new ValueCalculator() {\n");
 			this.s.append(INDENT_3);
 			this.s.append("@Override public Iterable<String> getVariableOrigins() {\n");
 			this.s.append(INDENT_4);
 			this.s.append("ArrayList<String> retVal = new ArrayList<>();\n");       
-			for (PrimitiveSymbolic symbol: symbols) {
+			for (Symbolic symbol: symbols) {
 				this.s.append(INDENT_4);
 				this.s.append("retVal.add(\"");
 				this.s.append(symbol.asOriginString());
@@ -456,21 +692,25 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			this.s.append(INDENT_3);
 			this.s.append("@Override public double calculate(List<Object> variables) {\n");
 			for (int i = 0; i < symbols.size(); ++i) {
-				final PrimitiveSymbolic symbol = symbols.get(i); 
+				final Symbolic symbol = symbols.get(i);
+				makeVariableFor(symbol);
+				if (symbol instanceof SymbolicApply) {
+					this.functionApplications.add((SymbolicApply) symbol);
+				}
 				this.s.append(INDENT_4);
 				this.s.append("final ");
-				this.s.append(javaPrimitiveType(symbol.getType()));
+				this.s.append(javaType(symbol));
 				this.s.append(" ");
-				this.s.append(javaVariable(symbol));
+				this.s.append(getVariableFor(symbol));
 				this.s.append(" = (");
-				this.s.append(javaPrimitiveType(symbol.getType()));
+				this.s.append(javaType(symbol));
 				this.s.append(") variables.get(");
 				this.s.append(i);
 				this.s.append(");\n");
 			}
 			this.s.append(INDENT_4);
 			this.s.append("return ");
-			this.s.append(javaAssumptionCheck(assumption));
+			this.s.append(javaAssumptionCheck(state, assumption));
 			this.s.append(";\n");
 			this.s.append(INDENT_3);
 			this.s.append("}\n");
@@ -480,8 +720,8 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			this.s.append("pathConditionHandler.add(new SimilarityWithNumericExpression(valueCalculator));\n");
 		}
 
-		private List<PrimitiveSymbolic> symbolsIn(Primitive e) {
-			final ArrayList<PrimitiveSymbolic> symbols = new ArrayList<>();
+		private List<Symbolic> symbolsInNumericAssumption(Primitive e) {
+			final ArrayList<Symbolic> symbols = new ArrayList<>();
 			final PrimitiveVisitor v = new PrimitiveVisitor() {
 
 				@Override
@@ -510,14 +750,10 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 
 				@Override
 				public void visitPrimitiveSymbolicApply(PrimitiveSymbolicApply x) throws Exception {
-					for (Value v : x.getArgs()) {
-						if (v instanceof Primitive) {
-							((Primitive) v).accept(this);
-                    	} else {
-                    		//TODO
-                    		throw new RuntimeException("Found a symbolic function application that returns a primitive but has as arg a reference: " + v.toString());
-						}
+					if (symbols.contains(x)) {
+						return; //surely its args have been processed
 					}
+					symbols.add(x);
 				}
 
 				@Override
@@ -542,10 +778,34 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			}
 			return symbols;
 		}
-
-		private String javaVariable(PrimitiveSymbolic symbol) {
-			return symbol.toString().replaceAll("[\\{\\}]", "");
-		}
+		
+		/*
+		private List<Symbolic> symbolsIn(Reference e) {
+			final ArrayList<Symbolic> symbols = new ArrayList<>();
+			if (e instanceof Null) {
+				return symbols;
+			} else if (e instanceof ReferenceSymbolicAtomic) {
+				if (symbols.contains(e)) {
+					return symbols;
+				}
+				symbols.add((ReferenceSymbolicAtomic) e);
+				return symbols;
+			} else if (e instanceof ReferenceSymbolicApply) {
+				symbols.add((ReferenceSymbolicApply) e);
+				for (Value arg : ((ReferenceSymbolicApply) e).getArgs()) {
+					if (arg instanceof Primitive) {
+						symbols.addAll(symbolsIn((Primitive) arg));
+					} else if (arg instanceof Reference) {
+						symbols.addAll(symbolsIn((Reference) arg));
+					} else {
+						throw new RuntimeException("Found a function application with an arg that is neither a primitive nor a reference: " + e.toString() + ".");
+					}
+				}
+				return symbols;
+			} else {
+				throw new RuntimeException("Found a function application with an arg that is a concrete reference or an unexpected kind of reference: " + e.toString() + ".");
+			}			
+		}*/
 
 		private Operator dual(Operator op) {
 			switch (op) {
@@ -570,9 +830,9 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			}
 		}
 
-		private String javaAssumptionCheck(Primitive assumption) {
+		private String javaAssumptionCheck(State state, Primitive assumption) {
 			//first pass: Eliminate negation
-			final ArrayList<Primitive> assumptionWithNoNegation = new ArrayList<Primitive>(); //we use only one element as it were a reference to a String variable            
+			final ArrayList<Primitive> assumptionWithNoNegation = new ArrayList<>(); //we use only one element as it were a reference to a String variable            
 			final PrimitiveVisitor negationEliminator = new PrimitiveVisitor() {
 
 				@Override
@@ -700,7 +960,8 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 
 				@Override
 				public void visitPrimitiveSymbolicAtomic(PrimitiveSymbolicAtomic s) {
-					translation.add(javaVariable(s));
+					makeVariableFor(s);
+					translation.add(getVariableFor(s));
 				}
 
 				@Override
@@ -720,28 +981,8 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 				@Override
 				public void visitPrimitiveSymbolicApply(PrimitiveSymbolicApply x)
 				throws Exception {
-					final StringBuilder b = new StringBuilder();
-					final String[] sig = x.getOperator().split(":");
-					b.append(sig[0].replace('/', '.') + "." + sig[2].replace('/', '.'));
-					b.append("(");
-					boolean firstDone = false;
-					for (Value v : x.getArgs()) {
-						if (firstDone) {
-							b.append(", ");
-						} else {
-							firstDone = true;
-						}
-						if (v instanceof Primitive) {
-							((Primitive) v).accept(this);
-							final String arg = translation.remove(0);
-							b.append(arg);
-						} else {
-							//TODO
-                    		throw new RuntimeException("Found a symbolic function application that returns a primitive but has as arg a reference: " + v.toString());
-						}
-					}
-					b.append(")");
-					translation.add(b.toString());
+					makeVariableFor(x);
+					translation.add(getVariableFor(x));
 				}
 
 				@Override
