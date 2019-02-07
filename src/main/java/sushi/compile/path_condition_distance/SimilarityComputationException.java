@@ -11,4 +11,8 @@ public class SimilarityComputationException extends RuntimeException {
 		super(message);
 	}
 
+	public SimilarityComputationException(String message, Exception e) {
+		super(message, e);
+	}
+
 }

@@ -1,13 +1,9 @@
 package sushi.formatters;
 
-import static jbse.bc.ClassLoaders.CLASSLOADER_APP;
-import static jbse.common.Type.className;
-import static jbse.common.Type.isPrimitive;
-import static jbse.common.Type.isReference;
-import static jbse.common.Type.splitReturnValueDescriptor;
+import static sushi.util.TypeUtils.javaClass;
+import static sushi.util.TypeUtils.javaPrimitiveType;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -17,18 +13,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import jbse.bc.ClassFile;
-import jbse.bc.Signature;
-import jbse.bc.exc.BadClassFileVersionException;
-import jbse.bc.exc.ClassFileIllFormedException;
-import jbse.bc.exc.ClassFileNotAccessibleException;
-import jbse.bc.exc.ClassFileNotFoundException;
-import jbse.bc.exc.IncompatibleClassFileException;
-import jbse.bc.exc.MethodNotFoundException;
-import jbse.bc.exc.PleaseLoadClassException;
-import jbse.bc.exc.WrongClassNameException;
 import jbse.common.Type;
-import jbse.common.exc.InvalidInputException;
 import jbse.common.exc.UnexpectedInternalException;
 import jbse.mem.Clause;
 import jbse.mem.ClauseAssume;
@@ -43,22 +28,14 @@ import jbse.val.Any;
 import jbse.val.Calculator;
 import jbse.val.Expression;
 import jbse.val.NarrowingConversion;
-import jbse.val.Null;
 import jbse.val.Operator;
 import jbse.val.Primitive;
 import jbse.val.PrimitiveSymbolicApply;
 import jbse.val.PrimitiveSymbolicAtomic;
 import jbse.val.PrimitiveVisitor;
-import jbse.val.Reference;
 import jbse.val.ReferenceSymbolic;
-import jbse.val.ReferenceSymbolicApply;
-import jbse.val.ReferenceSymbolicAtomic;
-import jbse.val.ReferenceSymbolicLocalVariable;
-import jbse.val.ReferenceSymbolicMemberArray;
-import jbse.val.ReferenceSymbolicMemberField;
 import jbse.val.Simplex;
 import jbse.val.Symbolic;
-import jbse.val.SymbolicApply;
 import jbse.val.Term;
 import jbse.val.Value;
 import jbse.val.WideningConversion;
@@ -170,7 +147,6 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 		private final HashMap<Symbolic, String> symbolsToVariables = new HashMap<>();
 		private final HashMap<String, Symbolic> variablesToSymbols = new HashMap<>();
 		private final ArrayList<String> inputVariables = new ArrayList<>();
-		private final ArrayList<SymbolicApply> functionApplications = new ArrayList<>();
 		private final Calculator calc = new CalculatorRewriting(); //dummy
 		private boolean panic = false;
 
@@ -184,6 +160,19 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			appendMethodEnd(finalState, testCounter);
 		}
 
+		public static String javaType(Symbolic symbol) {
+			if (symbol instanceof Primitive) { //either PrimitiveSymbolic or Term (however, it should never be the case of a Term)
+				final char type = ((Primitive) symbol).getType();
+				return javaPrimitiveType(type);
+			} else if (symbol instanceof ReferenceSymbolic) {
+				final String className = javaClass(((ReferenceSymbolic) symbol).getStaticType(), true);
+				return className;
+			} else {
+				//this should never happen
+				throw new RuntimeException("Reached unreachable branch while calculating the Java type of a symbol: Perhaps some type of symbol is not handled yet.");
+			}
+		}
+		
 		private void appendMethodDeclaration(State initialState, State finalState, int testCounter) {
 			if (this.panic) {
 				return;
@@ -248,9 +237,6 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 					final ReferenceSymbolic symbol = clauseExpands.getReference();
 					final long heapPosition = clauseExpands.getHeapPosition();
 					setWithNewObject(finalState, symbol, heapPosition);
-					if (symbol instanceof ReferenceSymbolicApply) {
-						this.functionApplications.add((ReferenceSymbolicApply) symbol);
-					}
 				} else if (clause instanceof ClauseAssumeNull) {
 					this.s.append(INDENT_2);
 					this.s.append("// "); //comment
@@ -259,9 +245,6 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 					final ClauseAssumeNull clauseNull = (ClauseAssumeNull) clause;
 					final ReferenceSymbolic symbol = clauseNull.getReference();
 					setWithNull(symbol);
-					if (symbol instanceof ReferenceSymbolicApply) {
-						this.functionApplications.add((ReferenceSymbolicApply) symbol);
-					}
 				} else if (clause instanceof ClauseAssumeAliases) {
 					this.s.append(INDENT_2);
 					this.s.append("// "); //comment
@@ -271,9 +254,6 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 					final ReferenceSymbolic symbol = clauseAliases.getReference();
 					final long heapPosition = clauseAliases.getHeapPosition();
 					setWithAlias(finalState, symbol, heapPosition);
-					if (symbol instanceof ReferenceSymbolicApply) {
-						this.functionApplications.add((ReferenceSymbolicApply) symbol);
-					}
 				} else if (clause instanceof ClauseAssume) {
 					this.s.append(INDENT_2);
 					this.s.append("// "); //comment
@@ -301,194 +281,6 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 				this.s.append(inputVariable);
 				this.s.append(");\n");
 			}			
-			for (SymbolicApply functionApplication : this.functionApplications) {
-				final String[] sig = functionApplication.getOperator().split(":");
-				final String returnType = splitReturnValueDescriptor(sig[1]);
-				final String javaReturnType = (isPrimitive(returnType) ? javaPrimitiveType(returnType.charAt(0)) : javaClass(returnType, true));
-				this.s.append(INDENT_2);
-				this.s.append("final ");
-				this.s.append(javaReturnType);
-				this.s.append(' ');
-				makeVariableFor(functionApplication);
-				this.s.append(getVariableFor(functionApplication));
-				this.s.append(" = ");
-				
-				final ClassFile cf;
-				final boolean isStatic;
-				try {
-					cf = finalState.getClassHierarchy().loadCreateClass(CLASSLOADER_APP, sig[0], true);
-					isStatic = cf.isMethodStatic(new Signature(sig[0], sig[1], sig[2]));
-				} catch (MethodNotFoundException | InvalidInputException | ClassFileNotFoundException | 
-						 ClassFileIllFormedException | ClassFileNotAccessibleException | IncompatibleClassFileException | 
-						 BadClassFileVersionException | WrongClassNameException | PleaseLoadClassException e) {
-					//this should never happen
-					throw new RuntimeException(e);
-				}
-				final Value[] args;
-				if (isStatic) {
-					this.s.append(javaClass(sig[0], true));
-					this.s.append(".");
-					args = functionApplication.getArgs();
-				} else {
-					this.s.append(translateArg(functionApplication.getArgs()[0]));
-					this.s.append(".");
-					args = Arrays.copyOfRange(functionApplication.getArgs(), 1, functionApplication.getArgs().length);
-				}
-				this.s.append(sig[2]);
-				this.s.append("(");
-				
-				boolean firstDone = false;
-				for (Value v : args) {
-					if (firstDone) {
-						this.s.append(", ");
-					} else {
-						firstDone = true;
-					}
-					this.s.append(translateArg(v));
-				}
-				this.s.append(");\n");
-				this.s.append(INDENT_2);
-				this.s.append("candidateObjects.put(\"");
-				this.s.append(functionApplication.asOriginString());
-				this.s.append("\", ");
-				this.s.append(getVariableFor(functionApplication));
-				this.s.append(");\n");
-			}
-			this.s.append('\n');
-		}
-		
-		private class PrimitiveArgTranslator implements PrimitiveVisitor {
-			String translation;
-			
-			@Override
-			public void visitAny(Any x) throws Exception {
-				throw new RuntimeException("Found a symbolic function application that has as arg the Any value.");								
-			}
-
-			@Override
-			public void visitExpression(Expression e) throws Exception {
-				final StringBuilder b = new StringBuilder();
-				final Operator op = e.getOperator();
-				if (e.isUnary()) {
-					e.getOperand().accept(this);
-					final String arg = this.translation;
-					b.append(op == Operator.NEG ? "-" : op.toString());
-					b.append("(");
-					b.append(arg);
-					b.append(")");
-				} else { 
-					e.getFirstOperand().accept(this);
-					final String firstArg = this.translation;
-					e.getSecondOperand().accept(this);
-					final String secondArg = this.translation;
-					b.append("(");
-					b.append(firstArg);
-					b.append(") ");
-					b.append(op.toString());
-					b.append(" (");
-					b.append(secondArg);
-					b.append(")");
-				}
-				this.translation = b.toString();
-			}
-
-			@Override
-			public void visitPrimitiveSymbolicApply(PrimitiveSymbolicApply x) throws Exception {
-				makeVariableFor(x);
-				this.translation = getVariableFor(x);
-			}
-
-			@Override
-			public void visitPrimitiveSymbolicAtomic(PrimitiveSymbolicAtomic s) throws Exception {
-				makeVariableFor(s);
-				this.translation = getVariableFor(s);
-			}
-
-			@Override
-			public void visitSimplex(Simplex x) throws Exception {
-				this.translation = x.getActualValue().toString();
-			}
-
-			@Override
-			public void visitTerm(Term x) throws Exception {
-				throw new RuntimeException("Found a symbolic function application that has as arg an uninterpreted Term: " + x.toString());								
-			}
-
-			@Override
-			public void visitNarrowingConversion(NarrowingConversion x) throws Exception {
-				x.getArg().accept(this);
-				final StringBuilder b = new StringBuilder();
-				b.append("(");
-				b.append(javaPrimitiveType(x.getType()));
-				b.append(") (");
-				b.append(this.translation);
-				b.append(")");
-				this.translation = b.toString();
-			}
-
-			@Override
-			public void visitWideningConversion(WideningConversion x) throws Exception {
-				x.getArg().accept(this);
-			}
-		};
-		
-		private StringBuilder translateArg(Value v) {
-			final StringBuilder retVal = new StringBuilder();
-			if (v instanceof Primitive) {
-				final PrimitiveArgTranslator translator = new PrimitiveArgTranslator();
-				try {
-					((Primitive) v).accept(translator);
-				} catch (RuntimeException e) {
-					//this might happen, just rethrow
-					throw e;
-				} catch (Exception e) {
-					//this should never happen
-					throw new RuntimeException(e);
-				}
-				retVal.append(translator.translation);
-			} else if (v instanceof ReferenceSymbolic) {
-				retVal.append(translateArg((ReferenceSymbolic) v));
-			} else if (v instanceof Null) {
-				retVal.append("null");
-			} else {
-        		throw new RuntimeException("Found a symbolic function application that has as arg a concrete reference of an unexpected kind of value: " + v.toString() +".");
-			}
-			return retVal;
-		}
-		
-		private StringBuilder translateArg(ReferenceSymbolic r) {
-			final StringBuilder retVal = new StringBuilder();
-			if (r instanceof ReferenceSymbolicLocalVariable) {
-				makeVariableFor(r);
-				retVal.append(getVariableFor(r));
-			} else if (r instanceof ReferenceSymbolicMemberField) {
-				final ReferenceSymbolicMemberField rf = (ReferenceSymbolicMemberField) r;
-				retVal.append(translateArg(rf.getContainer()));
-				retVal.append('.');
-				retVal.append(rf.getFieldName());
-			} else if (r instanceof ReferenceSymbolicMemberArray) {
-				final ReferenceSymbolicMemberArray ra = (ReferenceSymbolicMemberArray) r;
-				retVal.append(translateArg(ra.getContainer()));
-				retVal.append('[');
-				final PrimitiveArgTranslator translator = new PrimitiveArgTranslator();
-				try {
-					ra.getIndex().accept(translator);
-				} catch (RuntimeException e) {
-					//this might happen, just rethrow
-					throw e;
-				} catch (Exception e) {
-					//this should never happen
-					throw new RuntimeException(e);
-				}
-				retVal.append(translator.translation);
-				retVal.append(']');
-			} else if (r instanceof ReferenceSymbolicApply) {
-				makeVariableFor(r);
-				retVal.append(getVariableFor(r));
-			} else {
-				throw new RuntimeException("Unexpected reference value: " + r + ".");
-			}
-			return retVal;
 		}
 		
 		private void appendIfStatement(int testCounter) {
@@ -549,79 +341,13 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			this.s.append("\"));\n");
 		}
 
-		private String javaType(Symbolic symbol) {
-			if (symbol instanceof Primitive) { //either PrimitiveSymbolic or Term (however, it should never be the case of a Term)
-				final char type = ((Primitive) symbol).getType();
-				return javaPrimitiveType(type);
-			} else if (symbol instanceof ReferenceSymbolic) {
-				final String className = javaClass(((ReferenceSymbolic) symbol).getStaticType(), true);
-				return className;
-			} else {
-				//this should never happen
-				throw new RuntimeException("Reached unreachable branch while calculating the Java type of a symbol: Perhaps some type of symbol is not handled yet.");
-			}
-		}
-		
-		private String javaPrimitiveType(char type) {
-			if (type == Type.BOOLEAN) {
-				return "boolean";
-			} else if (type == Type.BYTE) {
-				return "byte";
-			} else if (type == Type.CHAR) {
-				return "char";
-			} else if (type == Type.DOUBLE) {
-				return "double";
-			} else if (type == Type.FLOAT) {
-				return "float";
-			} else if (type == Type.INT) {
-				return "int";
-			} else if (type == Type.LONG) {
-				return "long";
-			} else if (type == Type.SHORT) {
-				return "short";
-			} else {
-				throw new RuntimeException("Unexpected primitive type " + type + ".");
-			}
-		}
-
-		private String javaClass(String type, boolean forDeclaration) {
-			if (type == null) {
-				return null;
-			}
-			final String a = type.replace('/', '.');
-			final String s = (forDeclaration ? a.replace('$', '.') : a);
-
-			if (forDeclaration) {
-				final char[] tmp = s.toCharArray();
-				int arrayNestingLevel = 0;
-				boolean hasReference = false;
-				int start = 0;
-				for (int i = 0; i < tmp.length ; ++i) {
-					if (tmp[i] == '[') {
-						++arrayNestingLevel;
-					} else if (tmp[i] == 'L') {
-						hasReference = true;
-					} else {
-						start = i;
-						break;
-					}
-				}
-				final String t = hasReference ? s.substring(start, tmp.length - 1) : javaPrimitiveType(s.charAt(start));
-				final StringBuilder retVal = new StringBuilder(t);
-				for (int k = 1; k <= arrayNestingLevel; ++k) {
-					retVal.append("[]");
-				}
-				return retVal.toString();
-			} else {
-				return (isReference(s) ? className(s) : s);
-			}
-		}
-
 		private String generateVarNameFromOrigin(String name) {
 			return name.replace('{', '_')
 					   .replace('}', '_')
 					   .replace('[', '_')
 					   .replace(']', '_')
+					   .replace('<', '_')
+					   .replace('>', '_')
 					   .replace('$', '_')
 					   .replace('@', '_')
 					   .replace('(', '_')
@@ -694,9 +420,6 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			for (int i = 0; i < symbols.size(); ++i) {
 				final Symbolic symbol = symbols.get(i);
 				makeVariableFor(symbol);
-				if (symbol instanceof SymbolicApply) {
-					this.functionApplications.add((SymbolicApply) symbol);
-				}
 				this.s.append(INDENT_4);
 				this.s.append("final ");
 				this.s.append(javaType(symbol));

@@ -1,9 +1,15 @@
 package sushi.compile.path_condition_distance;
 
+import static sushi.util.ReflectionUtils.method;
+import static sushi.util.TypeUtils.splitParametersDescriptors;
+
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,7 +17,6 @@ import java.util.List;
 import java.util.Map;
 
 import sushi.util.ReflectionUtils;
-
 
 public class CandidateBackbone {
 	// We keep the direct and reverse mapping between visited objects and their origins 
@@ -67,76 +72,151 @@ public class CandidateBackbone {
 	}
 
 	public Object retrieveOrVisitField(String origin, Map<String, Object> candidateObjects) 
-			throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
+	throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
 		assert (origin != null); 
 		
-		// We check whether this entire origin corresponds to an already visited object
+		//check in the cache of the visited object
 		Object obj = getVisitedObject(origin);
 		if (obj != null) {
 			return obj;
 		}
 		
-		String[] fields = origin.split("\\.");
-		
-		fields = rearrangeFieldsStringsWrtArrayAccesses(fields);
-		
-		String originPrefix = fields[0];
-		boolean isStatic = originPrefix.matches("\\[\\(.*,.*\\)\\]");
-		if (!isStatic && !candidateObjects.containsKey(originPrefix)) {
-			throw new SimilarityComputationException("Origin " + originPrefix + " does not correspond to any root object in candidate");
-		}
-		
-		if (isStatic) {
-			try {
-				final String className = originPrefix.substring(originPrefix.indexOf(',') + 1, originPrefix.length() - 2).replace('/', '.');
-				final Field f = Class.forName(className).getDeclaredField(fields[1]);
-				f.setAccessible(true);
-				obj = f.get(null);
-			} catch (NoSuchFieldException | SecurityException | ClassNotFoundException | IllegalArgumentException | IllegalAccessException e) {
-				throw new SimilarityComputationException("Unexpected error while retrieving the value of a static field: " + originPrefix + "." + fields[1]);
+		final boolean startsFromLocalVariable = origin.startsWith("{");
+		final boolean startsFromStaticField = origin.startsWith("[");
+		final boolean startsFromMethodInvocation = origin.startsWith("<");
+		if (startsFromLocalVariable || startsFromStaticField || startsFromMethodInvocation) {
+			final String[] fields = splitFields(origin);
+
+			String originPrefix = fields[0];
+			if (startsFromLocalVariable) {
+				if (candidateObjects.containsKey(originPrefix)) {
+					obj = candidateObjects.get(originPrefix);
+				} else {
+					throw new SimilarityComputationException("Local variable (parameter) origin " + originPrefix + " not found in candidateObjects.");
+				}
+			} else if (startsFromStaticField) {
+				try {
+					final String className = originPrefix.substring(1, originPrefix.length() - 1).replace('/', '.');
+					final Field f = Class.forName(className).getDeclaredField(fields[1]);
+					f.setAccessible(true);
+					obj = f.get(null);
+				} catch (ClassNotFoundException | NoSuchFieldException e) {
+					throw new SimilarityComputationException("Static field origin " + originPrefix + "." + fields[1] + " does not exist.");
+				} catch (SecurityException | IllegalArgumentException | IllegalAccessException e) {
+					throw new SimilarityComputationException("Unexpected error while retrieving the value of a static field: " + originPrefix + "." + fields[1]);
+				}
+			} else { //starts from method invocation
+				//separates method signature and parameters list
+				final int firstSemicolonIndex = fields[0].indexOf(':');
+				if (firstSemicolonIndex == -1) {
+					throw new SimilarityComputationException("Unrecognized origin " + origin + ".");
+				}
+				final int secondSemicolonIndex = fields[0].substring(firstSemicolonIndex + 1).indexOf(':') + firstSemicolonIndex + 1;
+				if (secondSemicolonIndex == -1) {
+					throw new SimilarityComputationException("Unrecognized origin " + origin + ".");
+				}
+				final int firstParensIndex = fields[0].substring(secondSemicolonIndex).indexOf('(') + secondSemicolonIndex;
+				final int lastParensIndex = fields[0].substring(secondSemicolonIndex).lastIndexOf(')') + secondSemicolonIndex;
+				if (firstParensIndex == -1 || lastParensIndex == -1 || firstParensIndex > lastParensIndex) {
+					throw new SimilarityComputationException("Unrecognized origin " + origin + ".");
+				}
+				final String className = fields[0].substring(1, firstSemicolonIndex); //remove leading '<'
+				final String descriptor = fields[0].substring(firstSemicolonIndex + 1, secondSemicolonIndex);
+				final String methodName = fields[0].substring(secondSemicolonIndex + 1, firstParensIndex);
+				final String parameters = fields[0].substring(firstParensIndex + 1, lastParensIndex);
+				
+				//splits the parameters list into parameters
+				final ArrayList<String> parametersList = new ArrayList<>();
+				int beginParameter = 0;
+				int nestingLevel = 0;
+				for (int i = 0; i < parameters.length(); ++i) {
+					if (parameters.charAt(i) == ',' && nestingLevel == 0) {
+						if (i < parameters.length() - 1) {
+							parametersList.add(parameters.substring(beginParameter, i).trim());
+							beginParameter = i + 1;
+						} else {
+							throw new SimilarityComputationException("Function application found with wrong parameters list: " + parameters + ".");
+						}
+					} else if (parameters.charAt(i) == '(' || parameters.charAt(i) == '[') {
+						++nestingLevel;
+					} else if (parameters.charAt(i) == ')' || parameters.charAt(i) == ']') {
+						--nestingLevel;
+					} //else nothing
+				}
+				parametersList.add(parameters.substring(beginParameter).trim()); //last parameter
+				
+				//gets the parameters in the list
+				final Object[] objParameters = new Object[parametersList.size()];
+				for (int i = 0; i < parametersList.size(); ++i) {
+					final String parameter = parametersList.get(i);
+					final Object objParameter = retrieveOrVisitField(parameter, candidateObjects);
+					objParameters[i] = objParameter;
+				}
+				
+				//performs the method invocation
+				try {
+					final Method m = method(className, descriptor, methodName);
+					final boolean isMethodStatic = Modifier.isStatic(m.getModifiers());
+					if (parametersList.size() != splitParametersDescriptors(descriptor).length + (isMethodStatic ? 0 : 1)) {
+						throw new RuntimeException("Internal error: parameters list (" + parameters + ") was split into " + parametersList.size() + " parameters, but descriptor " + descriptor + " says that they should be " + splitParametersDescriptors(descriptor).length + ".");
+					}
+					m.setAccessible(true);
+					if (isMethodStatic) {
+						obj = m.invoke(null, objParameters);
+					} else if (objParameters[0] == null) {
+						//instance method with a null 'this' parameter
+						throw new FieldNotInCandidateException();
+					} else {
+						obj = m.invoke(objParameters[0], Arrays.copyOfRange(objParameters, 1, objParameters.length));
+					}
+				} catch (NoSuchMethodException | ClassNotFoundException | SecurityException e) {
+					throw new SimilarityComputationException("Reflective exception while invoking method " + className + ":" + descriptor + ":" + methodName + ": class not found, or method not found, or accessibility error. Exception: " + e.toString());
+				} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+					throw new SimilarityComputationException("Reflective exception while invoking method " + className + ":" + descriptor + ":" + methodName + "; exception: " + e.toString());
+				}
+			}
+			for (int i = (startsFromStaticField ? 2 : 1); i < fields.length; ++i) {
+				if (obj == null) {
+					throw new FieldNotInCandidateException();
+				}
+
+				if (this.invalidFieldPaths.contains(originPrefix)) {
+					throw new FieldDependsOnInvalidFieldPathException(originPrefix);
+				}
+				originPrefix += "." +  fields[i];
+
+				if ("<identityHashCode>".equals(fields[i])) {
+					try {
+						obj = System.class.getMethod("identityHashCode", Object.class).invoke(obj);
+					} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException
+							| NoSuchMethodException | SecurityException e) {
+						throw new RuntimeException(e);
+					}
+				} else if (obj.getClass().isArray()) {
+					obj = retrieveFromArray(obj, fields[i], candidateObjects);
+				} else {
+					Object hack = hack4StringJava6(obj, fields[i]); //GIO: TODO
+					if (hack != null) {
+						obj = hack;
+						continue;
+					}
+
+					Field f = ReflectionUtils.getInheritedPrivateField(obj.getClass(), fields[i]);
+
+					if (f == null) {
+						throw new SimilarityComputationException("Field name " + fields[i] + " in origin " + origin + " does not exist in the corrsponding object");
+					}
+					f.setAccessible(true);
+
+					try {
+						obj = f.get(obj);
+					} catch (IllegalArgumentException | IllegalAccessException e) {
+						throw new SimilarityComputationException("Unexpected error while retrieving the value of a field");
+					}
+				}
 			}
 		} else {
-			obj = candidateObjects.get(originPrefix);
-		}
-		for (int i = (isStatic ? 2 : 1); i < fields.length; i++) {
-			if (obj == null) {
-				throw new FieldNotInCandidateException();
-			}
-			
-			if (invalidFieldPaths.contains(originPrefix)) {
-				throw new FieldDependsOnInvalidFieldPathException(originPrefix);
-			}
-			originPrefix += "." +  fields[i];
-			
-			if ("hashCode()".equals(fields[i])) {
-				try {
-					obj = Object.class.getMethod("hashCode").invoke(obj);
-				} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException
-						| NoSuchMethodException | SecurityException e) {
-					throw new RuntimeException(e);
-				}
-			} else if (obj.getClass().isArray()) {
-				obj = retrieveFromArray(obj, fields[i], candidateObjects);
-			} else {
-				Object hack = hack4StringJava6(obj, fields[i]); //GIO: TODO
-				if (hack != null) {
-					obj = hack;
-					continue;
-				}
-
-				Field f = ReflectionUtils.getInheritedPrivateField(obj.getClass(), fields[i]);
-
-				if (f == null) {
-					throw new SimilarityComputationException("Field name " + fields[i] + " in origin " + origin + " does not exist in the corrsponding object");
-				}
-				f.setAccessible(true);
-			
-				try {
-					obj = f.get(obj);
-				} catch (IllegalArgumentException | IllegalAccessException e) {
-					throw new SimilarityComputationException("Unexpected error while retrieving the value of a field");
-				}
-			}
+			throw new SimilarityComputationException("Unrecognized origin " + origin + ".");
 		}
 		
 		storeInBackbone(obj, origin);
@@ -144,34 +224,63 @@ public class CandidateBackbone {
 		return obj;
 	}
 
-	private String[] rearrangeFieldsStringsWrtArrayAccesses(String[] fields) {
-		List<String> fieldsRefined = new ArrayList<>();
-		fieldsRefined.add(fields[0]); //fields[0] cannot be an array access specifier
+	private String[] splitFields(String origin) {
+		List<String> fields = new ArrayList<>();
 
-		String arrayAccessSpecifier = "";
-		int unmatched = 0;
-		for (int i = 1; i < fields.length; i++) { 
-			if (fields[i].charAt(0) == '[') {
-				unmatched++;
-			}
-			if (unmatched > 0) {
-				if (fields[i].charAt(0) != '[') {
-					arrayAccessSpecifier += ".";
+		int startField = 0;
+		int i = 0;
+		while (i < origin.length()) {
+			if (fields.isEmpty() && i == 0) {
+				//first one
+				if (origin.charAt(0) == '{' || origin.charAt(0) == '[') {
+					//it is a local variable or a static field
+					while (i < origin.length() && origin.charAt(i) != '.') {
+						++i;
+					}
+				} else if (origin.charAt(0) == '<') {
+					//it is a function application
+					int nestingLevel = 1;
+					++i;
+					while (i < origin.length() && nestingLevel != 0) {
+						if (origin.charAt(i) == '<') {
+							++nestingLevel;
+						} else if (origin.charAt(i) == '>') {
+							--nestingLevel;
+						} //else, do nothing
+						++i;
+					}
+					if (i < origin.length() - 1) {
+						++i;
+						if (origin.charAt(i) != '.') {
+							throw new SimilarityComputationException("Unrecognized origin " + origin + ".");
+						}
+					} else if (nestingLevel != 0) {
+						throw new SimilarityComputationException("Unrecognized origin " + origin + ".");
+					}
+				} else {
+					throw new SimilarityComputationException("Unrecognized origin " + origin + ".");
 				}
-				arrayAccessSpecifier += fields[i];
 			} else {
-				fieldsRefined.add(fields[i]);
-			}
-			if (fields[i].charAt(fields[i].length() - 1) == ']') {
-				unmatched--;
-				if (unmatched == 0) {
-					fieldsRefined.add(arrayAccessSpecifier);
-					arrayAccessSpecifier = "";
+				//anyone after the first
+				if (i < origin.length() - 1) {
+					++i; //skips '.' if on it
+				}
+				int nestingLevel = 0;
+				while (i < origin.length() && (nestingLevel != 0 || origin.charAt(i) != '.')) {
+					if (origin.charAt(i) == '[') {
+						++nestingLevel;
+					} else if (origin.charAt(i) == ']') {
+						--nestingLevel;
+					} //else, do nothing
+					++i;
 				}
 			}
+			//invariant: i >= origin.length() || origin.charAt(i) == '.' 
+			fields.add(origin.substring(startField, i));
+			startField = i + 1;
 		}
 		
-		return fieldsRefined.toArray(new String[0]);
+		return fields.toArray(new String[0]);
 	}
 
 	private Object retrieveFromArray(Object obj, String fieldSpec, Map<String, Object> candidateObjects) 

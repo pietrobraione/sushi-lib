@@ -1,6 +1,20 @@
 package sushi.util;
 
+import static sushi.util.TypeUtils.ARRAYOF;
+import static sushi.util.TypeUtils.BOOLEAN;
+import static sushi.util.TypeUtils.BYTE;
+import static sushi.util.TypeUtils.CHAR;
+import static sushi.util.TypeUtils.DOUBLE;
+import static sushi.util.TypeUtils.FLOAT;
+import static sushi.util.TypeUtils.INT;
+import static sushi.util.TypeUtils.LONG;
+import static sushi.util.TypeUtils.REFERENCE;
+import static sushi.util.TypeUtils.SHORT;
+import static sushi.util.TypeUtils.javaClass;
+import static sushi.util.TypeUtils.splitParametersDescriptors;
+
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -151,5 +165,50 @@ public class ReflectionUtils {
 			return true;
 		}
 		return false;
+	}
+	
+	public static Method method(String methodClassName, String methodDescriptor, String methodName) 
+	throws ClassNotFoundException, NoSuchMethodException, SecurityException {
+		final Class<?> methodClass = Class.forName(javaClass(methodClassName, false));
+		final ArrayList<Class<?>> parametersClasses = new ArrayList<>();
+		for (String parameterType : splitParametersDescriptors(methodDescriptor)) {
+			final Class<?> parameterClass;
+			if (parameterType.charAt(0) == ARRAYOF || parameterType.charAt(0) == REFERENCE) {
+				final String parameterJavaType = javaClass(parameterType, false);
+				parameterClass = Class.forName(parameterJavaType);
+			} else {
+				switch (parameterType.charAt(0)) {
+				case BOOLEAN:
+					parameterClass = boolean.class;
+					break;
+				case BYTE:
+					parameterClass = byte.class;
+					break;
+				case CHAR:
+					parameterClass = char.class;
+					break;
+				case DOUBLE:
+					parameterClass = double.class;
+					break;
+				case FLOAT:
+					parameterClass = float.class;
+					break;
+				case INT:
+					parameterClass = int.class;
+					break;
+				case LONG:
+					parameterClass = long.class;
+					break;
+				case SHORT:
+					parameterClass = short.class;
+					break;
+				default:
+					throw new RuntimeException("Reached unreachable default: unrecognized primitive type for argument: " + parameterType.charAt(0));
+				}
+			}
+			parametersClasses.add(parameterClass);
+		}
+		final Method retVal = methodClass.getDeclaredMethod(methodName, parametersClasses.toArray(new Class<?>[0]));
+		return retVal;
 	}
 }
