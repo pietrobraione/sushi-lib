@@ -115,8 +115,11 @@ public class ReflectionUtils {
 			try {
 				field = i.getDeclaredField(fname);
 			} catch (NoSuchFieldException | SecurityException e) {
+				//do nothing
 			}			
-			if (field != null) return field;
+			if (field != null) {
+				return field;
+			}
 			i = i.getSuperclass();
 		}
 		return null;
@@ -167,9 +170,8 @@ public class ReflectionUtils {
 		return false;
 	}
 	
-	public static Method method(String methodClassName, String methodDescriptor, String methodName) 
+	public static Method method(Class<?> methodClass, String methodDescriptor, String methodName) 
 	throws ClassNotFoundException, NoSuchMethodException, SecurityException {
-		final Class<?> methodClass = Class.forName(javaClass(methodClassName, false));
 		final ArrayList<Class<?>> parametersClasses = new ArrayList<>();
 		for (String parameterType : splitParametersDescriptors(methodDescriptor)) {
 			final Class<?> parameterClass;

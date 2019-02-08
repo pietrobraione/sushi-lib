@@ -18,16 +18,14 @@ public abstract class SimilarityWithRef implements ClauseSimilarityHandler {
 
 	@Override
 	public final double evaluateSimilarity(CandidateBackbone backbone, Map<String, Object> candidateObjects) {
-		logger.debug("Handling similarity with field reference " + theReferenceOrigin);
+		logger.debug("Handling similarity with field reference " + this.theReferenceOrigin);
 		
 		double similarity = 0.0d;
 		try {
-			Object referredObj = backbone.retrieveOrVisitField(theReferenceOrigin, candidateObjects);
-
+			final Object referredObj = backbone.retrieveOrVisitField(this.theReferenceOrigin, candidateObjects);
 			similarity = evaluateSimilarity(backbone, referredObj);
-			
-			if(similarity != 1.0d) {
-				backbone.addInvalidFieldPath(theReferenceOrigin);
+			if (similarity != 1.0d) {
+				backbone.addInvalidFieldPath(this.theReferenceOrigin);
 			}			
 		} catch (FieldNotInCandidateException e) {
 			logger.debug("Field " + theReferenceOrigin + " does not yet exist in candidate");			
