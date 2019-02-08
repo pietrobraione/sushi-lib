@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -40,7 +41,7 @@ import jbse.val.Value;
 import jbse.val.WideningConversion;
 
 /**
- * A {@link Formatter} used by Sushi (check of path condition
+ * A {@link Formatter} used by SUSHI (check of path condition
  * clauses).
  * 
  * @author Pietro Braione
@@ -66,35 +67,48 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 		this(methodNumber, null, initialStateSupplier);
 	}
 
-	@Override
-	public void formatPrologue() {
-		this.output.append(PROLOGUE_1);
-		this.output.append('_');
-		this.output.append(this.methodNumber);
-		if (this.traceCounterSupplier != null) {
-			this.output.append('_');
-			this.output.append(this.traceCounterSupplier.get());
-		}
-		this.output.append(PROLOGUE_2);
-	}
-
     @Override
     public void setConstants(Map<Long, String> stringLiterals) {
     	this.stringLiterals = new HashMap<>(stringLiterals); //safety copy
     }
     
 	@Override
-	public void formatStringLiterals() {
-		int i = 0;
-		for (String lit : this.stringLiterals.values()) {
-			this.output.append("    private static final String STRING_LITERAL_");
-			this.output.append(i);
-			this.output.append(" = \"");
-			this.output.append(lit);
-			this.output.append("\";\n");
-			++i;
+	public void formatPrologue() {
+		final long traceCounter = (this.traceCounterSupplier == null ? -1 : this.traceCounterSupplier.get());
+		this.output.append(PROLOGUE_1);
+		this.output.append('_');
+		this.output.append(this.methodNumber);
+		if (this.traceCounterSupplier != null) {
+			this.output.append('_');
+			this.output.append(traceCounter);
 		}
-		this.output.append("\n");
+		this.output.append(PROLOGUE_2);
+		for (Map.Entry<Long, String> lit : this.stringLiterals.entrySet()) {
+			this.output.append(INDENT_1);
+			this.output.append("private static final String CONST_");
+			this.output.append(lit.getKey());
+			this.output.append(" = \"");
+			this.output.append(lit.getValue());
+			this.output.append("\";\n");
+		}
+		this.output.append(PROLOGUE_3);
+		this.output.append('_');
+		this.output.append(this.methodNumber);
+		if (this.traceCounterSupplier != null) {
+			this.output.append('_');
+			this.output.append(traceCounter);
+		}		
+		this.output.append("() {\n");
+		for (long heapPos : new TreeSet<Long>(stringLiterals.keySet())) {
+			this.output.append(INDENT_2);
+			this.output.append("this.constants.put(");
+			this.output.append(heapPos);
+			this.output.append("L, CONST_");
+			this.output.append(heapPos);
+			this.output.append(");\n");
+		}
+		this.output.append(INDENT_1);
+		this.output.append("}\n\n");
 	}
 
 	@Override
@@ -133,7 +147,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			"import static java.lang.Double.*;\n" +
 			"import static java.lang.Math.*;\n" +
 			"\n" +
-			"import "+ sushi.compile.path_condition_distance.DistanceBySimilarityWithPathCondition.class.getPackage().getName() + ".*;\n" +
+			"import " + sushi.compile.path_condition_distance.DistanceBySimilarityWithPathCondition.class.getPackage().getName() + ".*;\n" +
 			"import " + sushi.logging.Level.class.getName() + ";\n" +
 			"import " + sushi.logging.Logger.class.getName() + ";\n" +
 			"\n" +
@@ -146,6 +160,9 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			INDENT_1 + "private static final double SMALL_DISTANCE = 1;\n" +
 			INDENT_1 + "private static final double BIG_DISTANCE = 1E300;\n" +
 			"\n";
+	private static final String PROLOGUE_3 = "\n" +
+			INDENT_1 + "private final HashMap<Long, String> constants = new HashMap<>();\n\n" +
+			INDENT_1 + "public EvoSuiteWrapper";
 
 	private static class MethodUnderTest {
 		private final StringBuilder s;
@@ -290,7 +307,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 		
 		private void appendIfStatement(int testCounter) {
 			this.s.append(INDENT_2);
-			this.s.append("double d = distance(pathConditionHandler, candidateObjects);\n");
+			this.s.append("double d = distance(pathConditionHandler, candidateObjects, this.constants);\n");
 			this.s.append(INDENT_2);
 			this.s.append("if (d == 0.0d)\n");
 			this.s.append(INDENT_3);
@@ -507,34 +524,6 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			return symbols;
 		}
 		
-		/*
-		private List<Symbolic> symbolsIn(Reference e) {
-			final ArrayList<Symbolic> symbols = new ArrayList<>();
-			if (e instanceof Null) {
-				return symbols;
-			} else if (e instanceof ReferenceSymbolicAtomic) {
-				if (symbols.contains(e)) {
-					return symbols;
-				}
-				symbols.add((ReferenceSymbolicAtomic) e);
-				return symbols;
-			} else if (e instanceof ReferenceSymbolicApply) {
-				symbols.add((ReferenceSymbolicApply) e);
-				for (Value arg : ((ReferenceSymbolicApply) e).getArgs()) {
-					if (arg instanceof Primitive) {
-						symbols.addAll(symbolsIn((Primitive) arg));
-					} else if (arg instanceof Reference) {
-						symbols.addAll(symbolsIn((Reference) arg));
-					} else {
-						throw new RuntimeException("Found a function application with an arg that is neither a primitive nor a reference: " + e.toString() + ".");
-					}
-				}
-				return symbols;
-			} else {
-				throw new RuntimeException("Found a function application with an arg that is a concrete reference or an unexpected kind of reference: " + e.toString() + ".");
-			}			
-		}*/
-
 		private Operator dual(Operator op) {
 			switch (op) {
 			case AND:
@@ -562,7 +551,6 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			//first pass: Eliminate negation
 			final ArrayList<Primitive> assumptionWithNoNegation = new ArrayList<>(); //we use only one element as it were a reference to a String variable            
 			final PrimitiveVisitor negationEliminator = new PrimitiveVisitor() {
-
 				@Override
 				public void visitAny(Any x) throws Exception {
 					assumptionWithNoNegation.add(x);
@@ -663,7 +651,6 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			//second pass: translate
 			final ArrayList<String> translation = new ArrayList<String>(); //we use only one element as it were a reference to a String variable            
 			final PrimitiveVisitor translator = new PrimitiveVisitor() {
-
 				@Override
 				public void visitWideningConversion(WideningConversion x) throws Exception {
 					x.getArg().accept(this);
@@ -794,5 +781,6 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 
 			return translation.get(0);
 		}
+
 	}
 }

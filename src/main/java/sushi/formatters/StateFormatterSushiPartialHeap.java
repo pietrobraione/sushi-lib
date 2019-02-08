@@ -43,7 +43,7 @@ import jbse.val.Value;
 import jbse.val.WideningConversion;
 
 /**
- * A {@link Formatter} used by Sushi (comparison with 
+ * A {@link Formatter} used by SUSHI (comparison with 
  * partial heap). 
  * 
  * @author Esther Turati
@@ -75,6 +75,11 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
     }
 
     @Override
+    public void setConstants(Map<Long, String> stringLiterals) {
+    	this.stringLiterals = new HashMap<>(stringLiterals); //safety copy
+    }
+    
+    @Override
     public void formatPrologue() {
         this.output.append(PROLOGUE);
         this.output.append('_');
@@ -84,18 +89,10 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
             this.output.append(this.traceCounterSupplier.get());
         }
         this.output.append(" {\n\n");
-    }
-    
-    @Override
-    public void setConstants(Map<Long, String> stringLiterals) {
-    	this.stringLiterals = new HashMap<>(stringLiterals); //safety copy
-    }
-    
-    @Override
-    public void formatStringLiterals() {
     	int i = 0;
     	for (String lit : this.stringLiterals.values()) {
-    		this.output.append("    private static final String STRING_LITERAL_");
+    		this.output.append(INDENT_1);
+    		this.output.append("private static final String STRING_LITERAL_");
     		this.output.append(i);
     		this.output.append(" = \"");
     		this.output.append(lit);
@@ -130,6 +127,9 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
         this.testCounter = 0;
     }
     
+    private static final String INDENT_1 = "    ";
+    private static final String INDENT_2 = INDENT_1 + INDENT_1;
+    private static final String INDENT_3 = INDENT_1 + INDENT_2;
     private static final String PROLOGUE =
         "import static " + sushi.compile.distance.Distance.class.getName() + ".distance;\n" +
         "\n" +
@@ -144,9 +144,6 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
         "public class EvoSuiteWrapper";
 
     private static class MethodUnderTest {
-        private static final String INDENT_1 = "    ";
-        private static final String INDENT_2 = INDENT_1 + INDENT_1;
-        private static final String INDENT_3 = INDENT_1 + INDENT_2;
         private final StringBuilder s;
         private final HashMap<Symbolic, String> symbolsToVariables = new HashMap<>();
         private final HashSet<String> evoSuiteInputVariables = new HashSet<>();

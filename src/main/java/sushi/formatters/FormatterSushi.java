@@ -11,5 +11,4 @@ import jbse.apps.Formatter;
  */
 public interface FormatterSushi extends Formatter {
 	void setConstants(Map<Long, String> stringLiterals);
-	void formatStringLiterals();
 }

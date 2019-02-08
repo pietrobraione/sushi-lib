@@ -20,7 +20,7 @@ public class SimilarityWithNumericExpression implements ClauseSimilarityHandler 
 	}
 
 	@Override
-	public double evaluateSimilarity(CandidateBackbone backbone, Map<String, Object> candidateObjects) {
+	public double evaluateSimilarity(CandidateBackbone backbone, Map<String, Object> candidateObjects, Map<Long, String> constants) {
 		logger.debug("Handling similarity for numeric expression");
 		
 		double similarity = 0.0d;
@@ -29,7 +29,7 @@ public class SimilarityWithNumericExpression implements ClauseSimilarityHandler 
 			final ArrayList<Object> variables = new ArrayList<>();
 			for (String variableOrigin : this.theValueCalculator.getVariableOrigins()) {
 				theVariableOrigin = variableOrigin;
-				Object variableValue = backbone.retrieveOrVisitField(variableOrigin, candidateObjects);
+				Object variableValue = backbone.retrieveOrVisitField(variableOrigin, candidateObjects, constants);
 				variables.add(variableValue);
 			}
 			similarity += inverseDistanceRatio(this.theValueCalculator.calculate(variables), 1.0d);

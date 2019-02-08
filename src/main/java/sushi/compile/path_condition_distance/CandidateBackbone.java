@@ -33,22 +33,22 @@ public class CandidateBackbone {
 	private void storeInBackbone(Object obj, String origin) {
 		// If another origin already exist, this is an alias path
 		// and then it shall not be stored
-		if (!visitedObjects.containsKey(new ObjectMapWrapper(obj))) {
-			visitedOrigins.put(origin, obj);		
-			visitedObjects.put(new ObjectMapWrapper(obj), origin);
+		if (!this.visitedObjects.containsKey(new ObjectMapWrapper(obj))) {
+			this.visitedOrigins.put(origin, obj);		
+			this.visitedObjects.put(new ObjectMapWrapper(obj), origin);
 		}
 	}
 
 	public Object getVisitedObject(String origin) {
-		return visitedOrigins.get(origin);
+		return this.visitedOrigins.get(origin);
 	}
 
 	public String getOrigin(Object obj) {
-		return visitedObjects.get(new ObjectMapWrapper(obj));
+		return this.visitedObjects.get(new ObjectMapWrapper(obj));
 	}
 
 	public void addInvalidFieldPath(String refPath) {
-		invalidFieldPaths.add(refPath);
+		this.invalidFieldPaths.add(refPath);
 	}
 	
 	private static final class ObjectMapWrapper {
@@ -76,7 +76,7 @@ public class CandidateBackbone {
 		}
 	}
 
-	public Object retrieveOrVisitField(String origin, Map<String, Object> candidateObjects) 
+	public Object retrieveOrVisitField(String origin, Map<String, Object> candidateObjects, Map<Long, String> constants) 
 	throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
 		assert (origin != null); 
 		
@@ -105,7 +105,7 @@ public class CandidateBackbone {
 					obj = candidateObjects.get(root);
 					if (hasArrayIndexAccess) {
 						if (obj.getClass().isArray()) {
-							obj = retrieveFromArray(obj, fields[0].substring(fields[0].indexOf('[')), candidateObjects);
+							obj = retrieveFromArray(obj, fields[0].substring(fields[0].indexOf('[')), candidateObjects, constants);
 						} else {
 							throw new SimilarityComputationException("Tried an array index access but the object is not an array.");
 						}
@@ -130,7 +130,7 @@ public class CandidateBackbone {
 					obj = f.get(null);
 					if (hasArrayIndexAccess) {
 						if (obj.getClass().isArray()) {
-							obj = retrieveFromArray(obj, fields[1].substring(fields[1].indexOf('[')), candidateObjects);
+							obj = retrieveFromArray(obj, fields[1].substring(fields[1].indexOf('[')), candidateObjects, constants);
 						} else {
 							throw new SimilarityComputationException("Tried an array index access but the object is not an array.");
 						}
@@ -184,7 +184,7 @@ public class CandidateBackbone {
 				final Object[] objParameters = new Object[parametersList.size()];
 				for (int i = 0; i < parametersList.size(); ++i) {
 					final String parameter = parametersList.get(i);
-					final Object objParameter = eval(parameter, candidateObjects);
+					final Object objParameter = eval(parameter, candidateObjects, constants);
 					objParameters[i] = objParameter;
 				}
 				
@@ -226,7 +226,7 @@ public class CandidateBackbone {
 				final boolean hasArrayIndexAccess = !fields[0].substring(fields[0].lastIndexOf('>') + 1).isEmpty();
 				if (hasArrayIndexAccess) {
 					if (obj.getClass().isArray()) {
-						obj = retrieveFromArray(obj, fields[0].substring(fields[0].lastIndexOf('>') + 1), candidateObjects);
+						obj = retrieveFromArray(obj, fields[0].substring(fields[0].lastIndexOf('>') + 1), candidateObjects, constants);
 					} else {
 						throw new SimilarityComputationException("Tried an array index access but the object is not an array.");
 					}
@@ -253,7 +253,7 @@ public class CandidateBackbone {
 						throw new RuntimeException(e);
 					}
 				} else if ("length".equals(fields[i]) && obj.getClass().isArray()) {
-					obj = retrieveFromArray(obj, fields[i], candidateObjects);
+					obj = retrieveFromArray(obj, fields[i], candidateObjects, constants);
 				} else {
 					final boolean hasArrayIndexAccess = fields[i].contains("[");
 					final String fieldName = (hasArrayIndexAccess ? fields[i].substring(0, fields[i].indexOf('[')) : fields[i]);
@@ -270,7 +270,7 @@ public class CandidateBackbone {
 					}
 					if (hasArrayIndexAccess) {
 						if (obj.getClass().isArray()) {
-							obj = retrieveFromArray(obj, fields[i].substring(fields[i].indexOf('[')), candidateObjects);
+							obj = retrieveFromArray(obj, fields[i].substring(fields[i].indexOf('[')), candidateObjects, constants);
 						} else {
 							throw new SimilarityComputationException("Tried an array index access but the object is not an array.");
 						}
@@ -343,13 +343,13 @@ public class CandidateBackbone {
 		return fields.toArray(new String[0]);
 	}
 
-	private Object retrieveFromArray(Object obj, String arrayAccessor, Map<String, Object> candidateObjects) 
+	private Object retrieveFromArray(Object obj, String arrayAccessor, Map<String, Object> candidateObjects, Map<Long, String> constants) 
 	throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
 		if (arrayAccessor.equals("length")) {
 			return Array.getLength(obj);
 		} else if (arrayAccessor.matches("\\[.*\\]")) {
 			final String indexString = arrayAccessor.substring(1, arrayAccessor.length() - 1);
-			final Object value = eval(indexString, candidateObjects);
+			final Object value = eval(indexString, candidateObjects, constants);
 			if (value instanceof Integer) {
 			    try {
 			    	final int index = ((Integer) value).intValue();
@@ -378,7 +378,7 @@ public class CandidateBackbone {
     private static final String XORBW = "^";
     private static final String NEG   = "~";
 	
-	private Object eval(String valueString, Map<String, Object> candidateObjects) 
+	private Object eval(String valueString, Map<String, Object> candidateObjects, Map<Long, String> constants) 
 	throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException, SimilarityComputationException {
 		if (valueString == null) {
 			throw new SimilarityComputationException("Trying to eval a null String.");
@@ -450,7 +450,7 @@ public class CandidateBackbone {
 		if (valueString.startsWith("WIDEN-")) {
 			final char destinationType = valueString.charAt("WIDEN-".length());
 			final String argString = valueString.substring("WIDEN-X(".length(), valueString.length() - 1);
-			final Object arg = eval(argString, candidateObjects);
+			final Object arg = eval(argString, candidateObjects, constants);
 			if (arg instanceof Number) {
 				switch (destinationType) {
 				case DOUBLE:
@@ -473,7 +473,7 @@ public class CandidateBackbone {
 		if (valueString.startsWith("NARROW-")) {
 			final char destinationType = valueString.charAt("NARROW-".length());
 			final String argString = valueString.substring("NARROW-X(".length(), valueString.length() - 1);
-			final Object arg = eval(argString, candidateObjects);
+			final Object arg = eval(argString, candidateObjects, constants);
 			if (arg instanceof Number) {
 				switch (destinationType) {
 				case FLOAT:
@@ -497,14 +497,22 @@ public class CandidateBackbone {
 		
 		//Any, DefaultValue, ReferenceArrayImmaterial
 		if ("*".equals(valueString) || "<DEFAULT>".equals(valueString) || valueString.startsWith("{R[")) {
-			//TODO support concrete references to constant objects - Strings, Numbers, Characters... 
 			throw new SimilarityComputationException("Found Any, DefaultValue, or ReferenceArrayImmaterial value: " + valueString + ".");
 		}
 		
 		//ReferenceConcrete
 		if (valueString.startsWith("Object[")) {
-			//TODO support concrete references to constant objects - Strings, Numbers, Characters... 
-			throw new SimilarityComputationException("Found ReferenceConcrete value: " + valueString + ".");
+			//TODO support concrete references to constant objects other than Strings
+			try {
+				final Long heapPos = Long.parseLong(valueString.substring(valueString.indexOf('[') + 1, valueString.length() - 1));
+				if (constants.containsKey(heapPos)) {
+					return constants.get(heapPos);
+				} else {
+					throw new SimilarityComputationException("Found ReferenceConcrete value: " + valueString + ", not corresponding to any literal.");
+				}
+			} catch (NumberFormatException e) {
+				throw new SimilarityComputationException("Unexpected invalid concrete object value: " + valueString + ".");
+			}
 		}
 		
 		//Expression
@@ -542,7 +550,6 @@ public class CandidateBackbone {
 				endOperator = i + 1;
 			}
 		}
-		
 		if (beginArg1 != -1 && endArg1 != -1 && (isUnary || beginArg2 != -1) && (isUnary || endArg2 != -1) &&
 		    beginArg1 < endArg1 && (isUnary || (beginArg2 == endArg1 + (endOperator - beginOperator) + 1 && beginArg2 < endArg2)) &&
 		    (!isUnary || (beginOperator == 0 && endOperator == 1)) && (isUnary || (beginOperator < endOperator && endOperator - beginOperator <= 3)) &&
@@ -562,7 +569,7 @@ public class CandidateBackbone {
 			final String operatorString = valueString.substring(beginOperator, endOperator);
 			if (isUnary) {
 				final String argString = valueString.substring(beginArg1 + 1, endArg1 - 1); //trim parentheses
-				final Object arg = eval(argString, candidateObjects);
+				final Object arg = eval(argString, candidateObjects, constants);
 				if (NEG.equals(operatorString)) {
 					if (arg instanceof Byte) {
 						return Byte.valueOf((byte) - ((Byte) arg).byteValue());
@@ -585,8 +592,8 @@ public class CandidateBackbone {
 			} else {
 				final String arg1String = valueString.substring(beginArg1 + 1, endArg1 - 1); //trim parentheses
 				final String arg2String = valueString.substring(beginArg2 + 1, endArg2 - 1); //trim parentheses
-				final Object arg1 = eval(arg1String, candidateObjects);
-				final Object arg2 = eval(arg2String, candidateObjects);
+				final Object arg1 = eval(arg1String, candidateObjects, constants);
+				final Object arg2 = eval(arg2String, candidateObjects, constants);
 				switch (operatorString) {
 				case ADD:
 					if (arg1 instanceof Byte && arg2 instanceof Byte) {
@@ -722,7 +729,7 @@ public class CandidateBackbone {
 			}
 		} //else, fall through
 		
-		//PrimitiveSymbolicAtomic, PrimitiveSymbolicApply, ReferenceSymbolic: retrieve,
-		return retrieveOrVisitField(valueString, candidateObjects);
+		//PrimitiveSymbolicAtomic, PrimitiveSymbolicApply, ReferenceSymbolic: retrieve
+		return retrieveOrVisitField(valueString, candidateObjects, constants);
 	}
 }
