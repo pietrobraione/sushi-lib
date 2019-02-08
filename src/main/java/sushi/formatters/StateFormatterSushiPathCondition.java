@@ -9,7 +9,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -50,6 +49,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 	private final long methodNumber;
 	private final Supplier<Long> traceCounterSupplier;
 	private final Supplier<State> initialStateSupplier;
+    private HashMap<Long, String> stringLiterals = null;
 	private StringBuilder output = new StringBuilder();
 	private int testCounter = 0;
 
@@ -78,10 +78,15 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 		this.output.append(PROLOGUE_2);
 	}
 
+    @Override
+    public void setConstants(Map<Long, String> stringLiterals) {
+    	this.stringLiterals = new HashMap<>(stringLiterals); //safety copy
+    }
+    
 	@Override
-	public void formatStringLiterals(Set<String> stringLiterals) {
+	public void formatStringLiterals() {
 		int i = 0;
-		for (String lit : stringLiterals) {
+		for (String lit : this.stringLiterals.values()) {
 			this.output.append("    private static final String STRING_LITERAL_");
 			this.output.append(i);
 			this.output.append(" = \"");

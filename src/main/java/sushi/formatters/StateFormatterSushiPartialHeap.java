@@ -54,6 +54,7 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
     private final Supplier<Long> traceCounterSupplier;
     private final Supplier<State> initialStateSupplier;
     private final Supplier<Map<PrimitiveSymbolic, Simplex>> modelSupplier;
+    private HashMap<Long, String> stringLiterals = null;
     private StringBuilder output = new StringBuilder();
     private int testCounter = 0;
     
@@ -86,9 +87,14 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
     }
     
     @Override
-    public void formatStringLiterals(Set<String> stringLiterals) {
+    public void setConstants(Map<Long, String> stringLiterals) {
+    	this.stringLiterals = new HashMap<>(stringLiterals); //safety copy
+    }
+    
+    @Override
+    public void formatStringLiterals() {
     	int i = 0;
-    	for (String lit : stringLiterals) {
+    	for (String lit : this.stringLiterals.values()) {
     		this.output.append("    private static final String STRING_LITERAL_");
     		this.output.append(i);
     		this.output.append(" = \"");

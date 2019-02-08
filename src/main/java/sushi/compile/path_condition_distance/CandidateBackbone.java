@@ -365,19 +365,18 @@ public class CandidateBackbone {
 		}
 	}
 	
-    private static final String ADD = "+";
-    private static final String SUB = "-";
-    private static final String MUL = "*";
-    private static final String DIV = "/";
-    private static final String REM = "%";
-    private static final String SHL = "<<";
-    private static final String SHR = ">>";
-    private static final String USHR = ">>>";
-    private static final String ORBW = "|";
+    private static final String ADD   = "+";
+    private static final String SUB   = "-";
+    private static final String MUL   = "*";
+    private static final String DIV   = "/";
+    private static final String REM   = "%";
+    private static final String SHL   = "<<";
+    private static final String SHR   = ">>";
+    private static final String USHR  = ">>>";
+    private static final String ORBW  = "|";
     private static final String ANDBW = "&";
     private static final String XORBW = "^";
-    private static final String NEG = "~";
-
+    private static final String NEG   = "~";
 	
 	private Object eval(String valueString, Map<String, Object> candidateObjects) 
 	throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException, SimilarityComputationException {
@@ -496,11 +495,17 @@ public class CandidateBackbone {
 			return null;
 		}
 		
-		//Any, DefaultValue, ReferenceArrayImmaterial, ReferenceConcrete
-		if ("*".equals(valueString) || "<DEFAULT>".equals(valueString) || 
-			valueString.startsWith("{R[") || valueString.startsWith("Object[")) {
-			throw new SimilarityComputationException("Found Any, DefaultValue, ReferenceArrayImmaterial or ReferenceConcrete value: " + valueString + ".");
-		}		
+		//Any, DefaultValue, ReferenceArrayImmaterial
+		if ("*".equals(valueString) || "<DEFAULT>".equals(valueString) || valueString.startsWith("{R[")) {
+			//TODO support concrete references to constant objects - Strings, Numbers, Characters... 
+			throw new SimilarityComputationException("Found Any, DefaultValue, or ReferenceArrayImmaterial value: " + valueString + ".");
+		}
+		
+		//ReferenceConcrete
+		if (valueString.startsWith("Object[")) {
+			//TODO support concrete references to constant objects - Strings, Numbers, Characters... 
+			throw new SimilarityComputationException("Found ReferenceConcrete value: " + valueString + ".");
+		}
 		
 		//Expression
 		int nestingLevel = 0;
