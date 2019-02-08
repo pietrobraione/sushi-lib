@@ -311,7 +311,6 @@ public class CandidateBackbone {
 						++i;
 					}
 					if (i < origin.length() - 1) {
-						++i;
 						if (origin.charAt(i) != '.') {
 							throw new SimilarityComputationException("Unrecognized origin " + origin + ".");
 						}
