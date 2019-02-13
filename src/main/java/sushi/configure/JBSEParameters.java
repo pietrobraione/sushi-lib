@@ -1032,7 +1032,7 @@ public final class JBSEParameters implements Cloneable {
      * @param notInitializedClasses a list of class names as a {@link String} varargs.
      */
     public void addNotInitializedClasses(String... notInitializedClasses) {
-        this.repoInit.addNotInitializedClass(notInitializedClasses);
+        this.repoInit.addNotInitializedClassPattern(notInitializedClasses);
     }
     
     /**
