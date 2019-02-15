@@ -363,8 +363,9 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			this.s.append("\"));\n");
 		}
 
+		private int varCounter = 0;
 		private String generateVarNameFromOrigin(String name) {
-			return name.replace('{', '_')
+			return "V" + this.varCounter++; /*name.replace('{', '_')
 					   .replace('}', '_')
 					   .replace('[', '_')
 					   .replace(']', '_')
@@ -379,7 +380,11 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 					   .replace('.', '_')
 					   .replace(',', '_')
 					   .replace(' ', '_')
-					   .replace('/', '_');
+					   .replace('+', 'P')
+					   .replace('-', 'M')
+					   .replace('*', 'T')
+					   .replace('+', 'P')
+					   .replace('/', '_');*/
 		}
 
 		private void makeVariableFor(Symbolic symbol) {
