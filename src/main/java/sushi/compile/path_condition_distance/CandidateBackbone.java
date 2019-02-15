@@ -535,7 +535,7 @@ public class CandidateBackbone {
 				}
 				++nestingLevel;
 			} else if (currentChar == ')') {
-				if (nestingLevel == 0) {
+				if (nestingLevel == 1) {
 					if (endArg1 == -1) {
 						endArg1 = i;
 					} else {
@@ -590,8 +590,8 @@ public class CandidateBackbone {
 					throw new RuntimeException("Internal error: unreachable case reached (possibly unforeseen or badly detected expected operator); operator: " + operatorString + ".");
 				}
 			} else {
-				final String arg1String = valueString.substring(beginArg1 + 1, endArg1 - 1); //trim parentheses
-				final String arg2String = valueString.substring(beginArg2 + 1, endArg2 - 1); //trim parentheses
+				final String arg1String = valueString.substring(beginArg1 + 1, endArg1); //trim parentheses
+				final String arg2String = valueString.substring(beginArg2 + 1, endArg2); //trim parentheses
 				final Object arg1 = eval(arg1String, candidateObjects, constants);
 				final Object arg2 = eval(arg2String, candidateObjects, constants);
 				switch (operatorString) {
