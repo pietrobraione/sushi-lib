@@ -98,7 +98,9 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			this.output.append('_');
 			this.output.append(traceCounter);
 		}		
-		this.output.append("() {\n");
+		this.output.append("(ClassLoader classLoader) {\n");
+		this.output.append(INDENT_2);
+		this.output.append("this.classLoader = classLoader;\n");
 		for (long heapPos : new TreeSet<Long>(stringLiterals.keySet())) {
 			this.output.append(INDENT_2);
 			this.output.append("this.constants.put(");
@@ -161,7 +163,8 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			INDENT_1 + "private static final double BIG_DISTANCE = 1E300;\n" +
 			"\n";
 	private static final String PROLOGUE_3 = "\n" +
-			INDENT_1 + "private final HashMap<Long, String> constants = new HashMap<>();\n\n" +
+			INDENT_1 + "private final HashMap<Long, String> constants = new HashMap<>();\n" +
+			INDENT_1 + "private final ClassLoader classLoader;\n\n" +
 			INDENT_1 + "public EvoSuiteWrapper";
 
 	private static class MethodUnderTest {
@@ -307,7 +310,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 		
 		private void appendIfStatement(int testCounter) {
 			this.s.append(INDENT_2);
-			this.s.append("double d = distance(pathConditionHandler, candidateObjects, this.constants);\n");
+			this.s.append("double d = distance(pathConditionHandler, candidateObjects, this.constants, this.classLoader);\n");
 			this.s.append(INDENT_2);
 			this.s.append("if (d == 0.0d)\n");
 			this.s.append(INDENT_3);
@@ -365,26 +368,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 
 		private int varCounter = 0;
 		private String generateVarNameFromOrigin(String name) {
-			return "V" + this.varCounter++; /*name.replace('{', '_')
-					   .replace('}', '_')
-					   .replace('[', '_')
-					   .replace(']', '_')
-					   .replace('<', '_')
-					   .replace('>', '_')
-					   .replace('$', '_')
-					   .replace('@', '_')
-					   .replace('(', '_')
-					   .replace(')', '_')
-					   .replace(';', '_')
-					   .replace(':', '_')
-					   .replace('.', '_')
-					   .replace(',', '_')
-					   .replace(' ', '_')
-					   .replace('+', 'P')
-					   .replace('-', 'M')
-					   .replace('*', 'T')
-					   .replace('+', 'P')
-					   .replace('/', '_');*/
+			return "V" + this.varCounter++;
 		}
 
 		private void makeVariableFor(Symbolic symbol) {

@@ -24,11 +24,17 @@ import java.util.Map;
 import sushi.util.ReflectionUtils;
 
 public class CandidateBackbone {
+	private final ClassLoader classLoader;
+	
 	// We keep the direct and reverse mapping between visited objects and their origins 
 	private final Map<ObjectMapWrapper, String> visitedObjects = new HashMap<ObjectMapWrapper, String>(); 
 	private final Map<String, Object> visitedOrigins = new HashMap<String, Object>(); 
 
 	private final Collection<String> invalidFieldPaths = new HashSet<String>(); 
+	
+	public CandidateBackbone(ClassLoader classLoader) {
+		this.classLoader = classLoader;
+	}
 	
 	private void storeInBackbone(Object obj, String origin) {
 		// If another origin already exist, this is an alias path
@@ -190,20 +196,7 @@ public class CandidateBackbone {
 				
 				//performs the method invocation
 				try {
-					final Class<?> methodClass;
-					if (objParameters.length > 0) {
-						final Object param0 = objParameters[0];
-						final Class<?> param0Class = param0.getClass();
-						final ClassLoader param0ClassLoader = param0Class.getClassLoader();
-						if (param0ClassLoader == null) {
-							//it is a standard library class
-							methodClass = Class.forName(javaClass(methodClassName, false));
-						} else {
-							methodClass = param0ClassLoader.loadClass(javaClass(methodClassName, false));
-						}
-					} else {
-						methodClass = Class.forName(javaClass(methodClassName, false));
-					}
+					final Class<?> methodClass = this.classLoader.loadClass(javaClass(methodClassName, false));
 					final Method m = method(methodClass, methodDescriptor, methodName);
 					final boolean isMethodStatic = Modifier.isStatic(m.getModifiers());
 					if (parametersList.size() != splitParametersDescriptors(methodDescriptor).length + (isMethodStatic ? 0 : 1)) {
