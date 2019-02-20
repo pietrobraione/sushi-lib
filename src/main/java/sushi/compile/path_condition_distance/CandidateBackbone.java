@@ -249,10 +249,13 @@ public class CandidateBackbone {
 					obj = retrieveFromArray(obj, fields[i], candidateObjects, constants);
 				} else {
 					final boolean hasArrayIndexAccess = fields[i].contains("[");
-					final String fieldName = (hasArrayIndexAccess ? fields[i].substring(0, fields[i].indexOf('[')) : fields[i]);
-					final Field f = ReflectionUtils.getInheritedPrivateField(obj.getClass(), fieldName);
+					final String fieldAndClassName = (hasArrayIndexAccess ? fields[i].substring(0, fields[i].indexOf('[')) : fields[i]);
+                                        final String[] fieldAndClassNameSplit = fieldAndClassName.split(":");
+                                        final String fieldName = fieldAndClassNameSplit[1];
+                                        final String className = fieldAndClassNameSplit[0];
+					final Field f = ReflectionUtils.getInheritedPrivateField(obj.getClass(), fieldName, className);
 					if (f == null) {
-						throw new SimilarityComputationException("Field name " + fieldName + " in origin " + origin + " does not exist in the corrsponding object.");
+						throw new SimilarityComputationException("Field name " + fieldName + " in origin " + origin + " does not exist in the corresponding object.");
 					}
 					f.setAccessible(true);
 

@@ -20,6 +20,7 @@ import jbse.mem.ClauseAssume;
 import jbse.mem.ClauseAssumeAliases;
 import jbse.mem.ClauseAssumeExpands;
 import jbse.mem.ClauseAssumeNull;
+import jbse.mem.ClauseAssumeReferenceSymbolic;
 import jbse.mem.Objekt;
 import jbse.mem.State;
 import jbse.mem.exc.FrozenStateException;
@@ -34,6 +35,7 @@ import jbse.val.PrimitiveSymbolicApply;
 import jbse.val.PrimitiveSymbolicAtomic;
 import jbse.val.PrimitiveVisitor;
 import jbse.val.ReferenceSymbolic;
+import jbse.val.ReferenceSymbolicApply;
 import jbse.val.Simplex;
 import jbse.val.Symbolic;
 import jbse.val.Term;
@@ -253,6 +255,9 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 			final Collection<Clause> pathCondition = finalState.getPathCondition();
 			for (Iterator<Clause> iterator = pathCondition.iterator(); iterator.hasNext(); ) {
 				final Clause clause = iterator.next();
+				if (shouldSkip(clause)) {
+					continue;
+				}
 				if (clause instanceof ClauseAssumeExpands) {
 					this.s.append(INDENT_2);
 					this.s.append("// "); //comment
@@ -290,6 +295,19 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 				} //else, do nothing
 			}
 			this.s.append("\n");
+		}
+		
+		private boolean shouldSkip(Clause clause) {
+			//exclude all the clauses with shape ClauseAssumeReferenceSymbolic
+			//if they refer to the resolution of a symbolic reference that is a 
+			//function application
+			if (clause instanceof ClauseAssumeReferenceSymbolic && 
+				((ClauseAssumeReferenceSymbolic) clause).getReference() instanceof ReferenceSymbolicApply) {
+				return true;
+			}
+			
+			//all other clauses are accepted
+			return false;
 		}
 
 		private void appendCandidateObjects(State finalState, int testCounter) {
