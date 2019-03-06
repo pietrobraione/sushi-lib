@@ -18,6 +18,8 @@ import jbse.apps.run.CannotBuildDecisionProcedureException;
 import jbse.apps.run.RunParameters;
 import jbse.bc.Classpath;
 import jbse.bc.Signature;
+import jbse.common.exc.InvalidInputException;
+import jbse.common.exc.UnexpectedInternalException;
 import jbse.dec.DecisionProcedure;
 import jbse.dec.DecisionProcedureAlgorithms;
 import jbse.dec.DecisionProcedureAlwSat;
@@ -28,7 +30,7 @@ import jbse.jvm.EngineParameters.BreadthMode;
 import jbse.jvm.EngineParameters.StateIdentificationMode;
 import jbse.mem.State;
 import jbse.rewr.CalculatorRewriting;
-import jbse.rewr.Rewriter;
+import jbse.rewr.RewriterCalculatorRewriting;
 import jbse.rules.ClassInitRulesRepo;
 import jbse.rules.LICSRulesRepo;
 import jbse.val.ReferenceSymbolic;
@@ -137,7 +139,7 @@ public final class JBSEParameters implements Cloneable {
 	private RunnerParameters runnerParameters;
 
 	/** The {@link Class}es of all the rewriters to be applied to terms (order matters). */
-	private ArrayList<Class<? extends Rewriter>> rewriterClasses = new ArrayList<>();
+	private ArrayList<Class<? extends RewriterCalculatorRewriting>> rewriterClasses = new ArrayList<>();
 	
 	/**
 	 * The decision procedure to be used for deciding the 
@@ -493,7 +495,7 @@ public final class JBSEParameters implements Cloneable {
 	 *        in the classpath of the symbolic executor.
 	 */
 	@SafeVarargs
-	public final void addRewriter(Class<? extends Rewriter>... rewriterClasses) {
+	public final void addRewriter(Class<? extends RewriterCalculatorRewriting>... rewriterClasses) {
 		Collections.addAll(this.rewriterClasses, rewriterClasses);
 	}
 	
@@ -512,7 +514,7 @@ public final class JBSEParameters implements Cloneable {
 	 * @return a {@link List}{@code <}{@link Class}{@code <? extends }
 	 * {@link Rewriter}{@code >>}. It may contain {@code null}.
 	 */
-    public List<Class<? extends Rewriter>> getRewriters() {
+    public List<Class<? extends RewriterCalculatorRewriting>> getRewriters() {
 	    return new ArrayList<>(this.rewriterClasses);
 	}
 
@@ -1545,21 +1547,26 @@ public final class JBSEParameters implements Cloneable {
 	 * or {@code null} iff {@link #isGuided()} {@code == false}.
 	 */
 	public RunnerParameters getGuidanceDriverParameters(CalculatorRewriting calc) {
-		final RunnerParameters retVal;
-		if (isGuided()) {
-			retVal = this.runnerParameters.clone();
-			retVal.setMethodSignature(this.driverSignature.getClassName(), this.driverSignature.getDescriptor(), this.driverSignature.getName());
-			retVal.setCalculator(calc);
-			retVal.setDecisionProcedure(new DecisionProcedureAlgorithms(new DecisionProcedureClassInit(new DecisionProcedureAlwSat(), calc, new ClassInitRulesRepo()), calc)); //for concrete execution
-			retVal.setStateIdentificationMode(StateIdentificationMode.COMPACT);
-			retVal.setBreadthMode(BreadthMode.MORE_THAN_ONE);
-			retVal.setIdentifierSubregionRoot();
-		} else {
-			retVal = null;
-		}
-		return retVal;
+	    final RunnerParameters retVal;
+	    if (isGuided()) {
+	        retVal = this.runnerParameters.clone();
+	        retVal.setMethodSignature(this.driverSignature.getClassName(), this.driverSignature.getDescriptor(), this.driverSignature.getName());
+	        retVal.setCalculator(calc);
+	        try {
+	            retVal.setDecisionProcedure(new DecisionProcedureAlgorithms(new DecisionProcedureClassInit(new DecisionProcedureAlwSat(calc), new ClassInitRulesRepo())));
+	        } catch (InvalidInputException e) {
+	            //this should never happen
+	            throw new UnexpectedInternalException(e);
+	        }
+	        retVal.setStateIdentificationMode(StateIdentificationMode.COMPACT);
+	        retVal.setBreadthMode(BreadthMode.MORE_THAN_ONE);
+	        retVal.setIdentifierSubregionRoot();
+	    } else {
+	        retVal = null;
+	    }
+	    return retVal;
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	@Override 
 	public JBSEParameters clone() {
@@ -1570,7 +1577,7 @@ public final class JBSEParameters implements Cloneable {
 			throw new AssertionError(e); //will not happen
 		}
 		o.runnerParameters = this.runnerParameters.clone();
-		o.rewriterClasses = (ArrayList<Class<? extends Rewriter>>) this.rewriterClasses.clone();
+		o.rewriterClasses = (ArrayList<Class<? extends RewriterCalculatorRewriting>>) this.rewriterClasses.clone();
 		o.repoLICS = this.repoLICS.clone();
         o.repoInit = this.repoInit.clone();
 		o.conservativeRepOks = (HashMap<String, String>) this.conservativeRepOks.clone();
