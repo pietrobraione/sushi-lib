@@ -124,10 +124,10 @@ public class CandidateBackbone {
 				if (this.invalidFieldPaths.contains(originPrefix)) {
 					throw new FieldDependsOnInvalidFieldPathException(originPrefix);
 				}
+				final String className = javaClass(fields[0].substring(1, fields[0].length() - 1), false);
+				final boolean hasArrayIndexAccess = fields[1].contains("[");
+				final String fieldName = (hasArrayIndexAccess ? fields[1].substring(fields[1].indexOf(':') + 1, fields[1].indexOf('[')) : fields[1].substring(fields[1].indexOf(':') + 1, fields[1].length()));
 				try {
-					final String className = javaClass(fields[0].substring(1, fields[0].length() - 1), false);
-					final boolean hasArrayIndexAccess = fields[1].contains("[");
-					final String fieldName = (hasArrayIndexAccess ? fields[1].substring(0, fields[1].indexOf('[')) : fields[1]);
 					final Field f = Class.forName(className).getDeclaredField(fieldName);
 					if (f == null) {
 						throw new SimilarityComputationException("Field name " + fieldName + " in origin " + origin + " does not exist in the class " + className + ".");
@@ -142,9 +142,9 @@ public class CandidateBackbone {
 						}
 					}
 				} catch (ClassNotFoundException | NoSuchFieldException e) {
-					throw new SimilarityComputationException("Static field origin " + originPrefix + " does not exist.");
+					throw new SimilarityComputationException("Static field origin " + originPrefix + " does not exist: class " + className + ", field " + fieldName);
 				} catch (SecurityException | IllegalArgumentException | IllegalAccessException e) {
-					throw new SimilarityComputationException("Unexpected error while retrieving the value of a static field: " + originPrefix);
+					throw new SimilarityComputationException("Unexpected error while retrieving the value of a static field: " + originPrefix + ", class " + className + ", field " + fieldName);
 				}
 			} else { //starts from method invocation
 				//separates method signature and parameters list
