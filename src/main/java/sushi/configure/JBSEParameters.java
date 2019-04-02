@@ -19,6 +19,7 @@ import jbse.apps.run.RunParameters;
 import jbse.bc.Classpath;
 import jbse.bc.Signature;
 import jbse.common.exc.InvalidInputException;
+import jbse.common.exc.UnexpectedInternalException;
 import jbse.dec.DecisionProcedure;
 import jbse.dec.DecisionProcedureAlgorithms;
 import jbse.dec.DecisionProcedureAlwSat;
@@ -1545,22 +1546,27 @@ public final class JBSEParameters implements Cloneable {
 	 * or {@code null} iff {@link #isGuided()} {@code == false}.
 	 * @throws InvalidInputException if {@code calc == null}.
 	 */
-	public RunnerParameters getGuidanceDriverParameters(CalculatorRewriting calc) throws InvalidInputException {
-		final RunnerParameters retVal;
-		if (isGuided()) {
-			retVal = this.runnerParameters.clone();
-			retVal.setMethodSignature(this.driverSignature.getClassName(), this.driverSignature.getDescriptor(), this.driverSignature.getName());
-			retVal.setCalculator(calc);
-			retVal.setDecisionProcedure(new DecisionProcedureAlgorithms(new DecisionProcedureClassInit(new DecisionProcedureAlwSat(calc), new ClassInitRulesRepo()))); //for concrete execution
-			retVal.setStateIdentificationMode(StateIdentificationMode.COMPACT);
-			retVal.setBreadthMode(BreadthMode.MORE_THAN_ONE);
-			retVal.setIdentifierSubregionRoot();
-		} else {
-			retVal = null;
-		}
-		return retVal;
+	public RunnerParameters getGuidanceDriverParameters(CalculatorRewriting calc) {
+	    final RunnerParameters retVal;
+	    if (isGuided()) {
+	        retVal = this.runnerParameters.clone();
+	        retVal.setMethodSignature(this.driverSignature.getClassName(), this.driverSignature.getDescriptor(), this.driverSignature.getName());
+	        retVal.setCalculator(calc);
+	        try {
+	            retVal.setDecisionProcedure(new DecisionProcedureAlgorithms(new DecisionProcedureClassInit(new DecisionProcedureAlwSat(calc), new ClassInitRulesRepo())));
+	        } catch (InvalidInputException e) {
+	            //this should never happen
+	            throw new UnexpectedInternalException(e);
+	        }
+	        retVal.setStateIdentificationMode(StateIdentificationMode.COMPACT);
+	        retVal.setBreadthMode(BreadthMode.MORE_THAN_ONE);
+	        retVal.setIdentifierSubregionRoot();
+	    } else {
+	        retVal = null;
+	    }
+	    return retVal;
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	@Override 
 	public JBSEParameters clone() {
