@@ -4,6 +4,6 @@ import java.util.Map;
 
 public interface ClauseSimilarityHandler {
 	
-	double evaluateSimilarity(CandidateBackbone vdata, Map<String, Object> candidateObjects, Map<Long, String> constants);
+	double evaluateSimilarity(CandidateBackbone vdata, Map<String, Object> candidateObjects, Map<Long, String> constants, SushiLibCache cache);
 	
 }

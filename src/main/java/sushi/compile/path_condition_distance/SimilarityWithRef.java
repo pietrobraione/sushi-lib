@@ -17,12 +17,12 @@ public abstract class SimilarityWithRef implements ClauseSimilarityHandler {
 	}
 
 	@Override
-	public final double evaluateSimilarity(CandidateBackbone backbone, Map<String, Object> candidateObjects, Map<Long, String> constants) {
+	public final double evaluateSimilarity(CandidateBackbone backbone, Map<String, Object> candidateObjects, Map<Long, String> constants, SushiLibCache cache) {
 		logger.debug("Handling similarity with field reference " + this.theReferenceOrigin);
 		
 		double similarity = 0.0d;
 		try {
-			final Object referredObj = backbone.retrieveOrVisitField(this.theReferenceOrigin, candidateObjects, constants);
+			final Object referredObj = backbone.retrieveOrVisitField(this.theReferenceOrigin, candidateObjects, constants, cache);
 			similarity = evaluateSimilarity(backbone, referredObj);
 			if (similarity != 1.0d) {
 				backbone.addInvalidFieldPath(this.theReferenceOrigin);
