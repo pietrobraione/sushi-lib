@@ -13,12 +13,12 @@ public class ParametersModifier {
 	throws FileNotFoundException, ParseException, IOException { }
 	
 	protected final void loadHEXFile(String path, JBSEParameters p) 
-	throws FileNotFoundException, ParseException, IOException {
+	throws ParseException, IOException {
 		final SettingsReader sr;
 		try {
 			sr = new SettingsReader(path);
 		} catch (jbse.apps.settings.ParseException e) {
-			throw new ParseException(e.getMessage());
+			throw new ParseException("File " + path + ": " + e.getMessage());
 		}
 		sr.fillRunnerParameters(p.getRunnerParameters());
 		sr.fillRulesLICS(p.getLICSRulesRepo());
