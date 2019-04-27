@@ -22,8 +22,10 @@ public class SimilarityWithRefToFreshObject extends SimilarityWithRef {
 		
 		final double freshnessSimilarity = 0.3d;
 		final double samePackageSimilarity = 0.3d;
-		final double sameClassSimilarity = 0.4d;
-		assert (freshnessSimilarity + samePackageSimilarity + sameClassSimilarity == 1.0d);
+		final double sameClassSimilarity = 1.0d - freshnessSimilarity - samePackageSimilarity;
+		assert (0 <= freshnessSimilarity && freshnessSimilarity <= 1.0d);
+		assert (0 <= samePackageSimilarity && samePackageSimilarity <= 1.0d);
+		assert (0 <= sameClassSimilarity && sameClassSimilarity <= 1.0d);
 		
 		boolean isFreshObject = false;
 		double similarity = 0.0d;

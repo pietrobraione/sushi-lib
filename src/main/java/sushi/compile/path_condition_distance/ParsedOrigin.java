@@ -29,24 +29,23 @@ public class ParsedOrigin {
 	private final Set<String> dependedOrigins = new HashSet<>();
 	private final OriginAccessor[] originAccessSpecifier;
 	private int nextUnparsed = 0;
-	private String parsedPrefix = "";
 
 	public ParsedOrigin(String origin) {
 		assert (origin != null && !origin.isEmpty()); 
 		this.origin = origin;
-		fields = splitFields(origin); 
-		originAccessSpecifier = new OriginAccessor[fields.length];
+		this.fields = splitFields(origin); 
+		this.originAccessSpecifier = new OriginAccessor[this.fields.length];
 		
-		String dependedOrigin = fields[0];
-		dependedOrigins.add(dependedOrigin);
-		for (int i = 1; i < fields.length; i++) {
-			dependedOrigin += "." + fields[i];
-			dependedOrigins.add(dependedOrigin);			
+		String dependedOrigin = this.fields[0];
+		this.dependedOrigins.add(dependedOrigin);
+		for (int i = 1; i < this.fields.length; ++i) {
+			dependedOrigin += "." + this.fields[i];
+			this.dependedOrigins.add(dependedOrigin);			
 		}
 	}
 	
 	private String[] splitFields(String origin) {
-		List<String> fields = new ArrayList<>();
+		final List<String> fields = new ArrayList<>();
 
 		int startField = 0;
 		int i = 0;
@@ -56,7 +55,7 @@ public class ParsedOrigin {
 				if (origin.charAt(0) == '{' || origin.charAt(0) == '[') {
 					//it is a local variable or a static field
 					++i; //skips first '[', if on it
-					while (i < origin.length() && origin.charAt(i) != '.' /*GIO*/ && origin.charAt(i) != '[') {
+					while (i < origin.length() && origin.charAt(i) != '.' /*GIO*/ && origin.charAt(i) != '[') { //TODO why '['???
 						++i;
 					}
 				} else if (origin.charAt(0) == '<') {
@@ -104,13 +103,13 @@ public class ParsedOrigin {
 				if (i < origin.length() - 1) {
 					++i; //skips '.' if on it
 				}
-				while (i < origin.length() && origin.charAt(i) != '.'  /*GIO*/ && origin.charAt(i) != '[') {
+				while (i < origin.length() && origin.charAt(i) != '.'  /*GIO*/ && origin.charAt(i) != '[') { //TODO why '['???
 					++i;
 				}
 			}
 			//invariant: i >= origin.length() || origin.charAt(i) == '.' 
 			fields.add(origin.substring(startField, i));
-			startField = i < origin.length() && origin.charAt(i) == '.' ? i + 1 : i; //GIO
+			startField = (i < origin.length() && origin.charAt(i) == '.') ? i + 1 : i;
 		}
 		
 		return fields.toArray(new String[0]);
@@ -119,10 +118,13 @@ public class ParsedOrigin {
 	
 	public Object get(Map<String, Object> candidateObjects, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache) throws FieldDependsOnInvalidFieldPathException, FieldNotInCandidateException {
 		//1. Check if any dependedOrigin is invalid, throw exception to abort
-		Set<String> smallerSet = candidateBackbone.getInvalidFieldPaths();
-		Set<String> biggerSet = dependedOrigins;
-		if (smallerSet.size() > biggerSet.size()) {
-			smallerSet = dependedOrigins;
+		final Set<String> smallerSet;
+		final Set<String> biggerSet;
+		if (candidateBackbone.getInvalidFieldPaths().size() <= this.dependedOrigins.size()) {
+			smallerSet = candidateBackbone.getInvalidFieldPaths();
+			biggerSet = this.dependedOrigins;
+		} else {
+			smallerSet = this.dependedOrigins;
 			biggerSet = candidateBackbone.getInvalidFieldPaths();
 		}
 		for (String s : smallerSet) {
@@ -142,35 +144,33 @@ public class ParsedOrigin {
 		
 		//2. retrieve the object for the already parsed fields
 		Object obj = null;
-		for (int i = 0; i < originAccessSpecifier.length; i++) {
-			OriginAccessor accessor = originAccessSpecifier[i]; 
+		for (int i = 0; i < this.originAccessSpecifier.length; i++) {
+			final OriginAccessor accessor = this.originAccessSpecifier[i]; 
 			if (accessor == null) { 
-				if (i == 1) continue; //check also next accessor: the 2nd accessor is empty for origins that start from static fields
-				else break;
+				if (i == 1) {
+					continue; //check also next accessor: the 2nd accessor is empty for origins that start from static fields
+				} else {
+					break;
+				}
 			}
 			obj = accessor.getActualObject(candidateObjects, obj, candidateBackbone, constants, cache);
 		}
 		
 		//3. complete parsing, if not yet done or done only partially
-		while (nextUnparsed < fields.length) {
-			if (nextUnparsed == 0) {
-				final boolean startsFromRootVariable = fields[0].startsWith("{");
-				final boolean startsFromStaticField = fields[0].startsWith("[");
-				final boolean startsFromMethodInvocation = fields[0].startsWith("<");
-				if (startsFromRootVariable || startsFromStaticField || startsFromMethodInvocation) {
-					if (startsFromStaticField) {
-						obj = parseAccessorStaticField();
-						parsedPrefix = fields[0] + "." + fields[1];
-						nextUnparsed = 2;		
-					} else if (startsFromRootVariable) {
-						obj = parseAccessorRootObject(candidateObjects);
-						parsedPrefix = fields[0];
-						nextUnparsed = 1;		
-					} else { //starts from method invocation
-						obj = parseAccessorMethodInvocation(candidateObjects, candidateBackbone, constants, cache);
-						parsedPrefix = fields[0];
-						nextUnparsed = 1;							
-					}
+		while (this.nextUnparsed < this.fields.length) {
+			if (this.nextUnparsed == 0) {
+				final boolean startsFromRootVariable = this.fields[0].startsWith("{");
+				final boolean startsFromStaticField = this.fields[0].startsWith("[");
+				final boolean startsFromMethodInvocation = this.fields[0].startsWith("<");
+				if (startsFromStaticField) {
+					obj = parseAccessorStaticField();
+					this.nextUnparsed = 2;		
+				} else if (startsFromRootVariable) {
+					obj = parseAccessorRootObject(candidateObjects);
+					this.nextUnparsed = 1;		
+				} else if (startsFromMethodInvocation) {
+					obj = parseAccessorMethodInvocation(candidateObjects, candidateBackbone, constants, cache);
+					this.nextUnparsed = 1;							
 				} else {
 					throw new SimilarityComputationException("Unrecognized origin " + origin + ".");
 				}
@@ -178,14 +178,13 @@ public class ParsedOrigin {
 				if (obj == null) {
 					throw new FieldNotInCandidateException();
 				} else {
-					if ("<identityHashCode>".equals(fields[nextUnparsed])) {
+					if ("<identityHashCode>".equals(this.fields[this.nextUnparsed])) {
 						obj = parseAccessorIdentityHashCode(obj);
-					} else 	if (obj.getClass().isArray()) {
+					} else if (obj.getClass().isArray()) {
 						obj = parseAccessorArrayLocation(obj, candidateObjects, candidateBackbone, constants, cache);  
 					} else {
 						obj = parseAccessorField(obj);
 					}
-					parsedPrefix = fields[nextUnparsed++];	
 				}
 			}
 		}
@@ -194,8 +193,8 @@ public class ParsedOrigin {
 	}
 
 	private Object parseAccessorStaticField() {	
-		final String className = javaClass(fields[0].substring(1, fields[0].length() - 1), false);
-		final String fieldName = fields[1].substring(fields[1].indexOf(':') + 1);
+		final String className = javaClass(this.fields[0].substring(1, this.fields[0].length() - 1), false);
+		final String fieldName = this.fields[1].substring(this.fields[1].indexOf(':') + 1);
 		try {
 			final Field f = Class.forName(className).getDeclaredField(fieldName);
 			if (f == null) {
@@ -203,7 +202,7 @@ public class ParsedOrigin {
 			}
 			final OriginAccessorStaticField accessor = new OriginAccessorStaticField(f);
 			final Object ret = accessor.getActualObject();
-			originAccessSpecifier[0] = accessor;
+			this.originAccessSpecifier[0] = accessor;
 			return ret;
 		} catch (NoSuchFieldException | SecurityException | ClassNotFoundException e) {
 			throw new SimilarityComputationException("Static field origin " + origin + " does not exist: class " + className + ", field " + fieldName + " : " + e );
@@ -212,11 +211,11 @@ public class ParsedOrigin {
 	}
 
 	private Object parseAccessorRootObject(Map<String, Object> candidateObjects) {
-		final String root = fields[0];
+		final String root = this.fields[0];
 		if (candidateObjects.containsKey(root)) {
 			final OriginAccessorRootObject accessor = new OriginAccessorRootObject(root);
 			final Object ret = accessor.getActualObject(candidateObjects);
-			originAccessSpecifier[0] = accessor;
+			this.originAccessSpecifier[0] = accessor;
 			return ret;
 		} else {
 			throw new SimilarityComputationException("Local variable (parameter) origin " + root + " not found in candidateObjects.");
@@ -224,24 +223,38 @@ public class ParsedOrigin {
 	}
 
 	private Object parseAccessorMethodInvocation(Map<String, Object> candidateObjects, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache) throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
-		//separates method signature and parameters list
-		final int firstSemicolonIndex = fields[0].indexOf(':');
+		//gets the position of the first semicolon
+		final int firstSemicolonIndex = this.fields[0].indexOf(':');
 		if (firstSemicolonIndex == -1) {
-			throw new SimilarityComputationException("Unrecognized origin " + origin + ".");
+			throw new SimilarityComputationException("Unrecognized origin " + origin + " (first semicolon missing).");
 		}
-		final int secondSemicolonIndex = fields[0].substring(firstSemicolonIndex + 1).indexOf(':') + firstSemicolonIndex + 1;
-		if (secondSemicolonIndex == -1) {
-			throw new SimilarityComputationException("Unrecognized origin " + origin + ".");
+		
+		//gets the position of the second semicolon
+		if (this.fields[0].substring(firstSemicolonIndex + 1).indexOf(':') == -1) {
+			throw new SimilarityComputationException("Unrecognized origin " + origin + " (second semicolon missing).");
 		}
-		final int firstParensIndex = fields[0].substring(secondSemicolonIndex).indexOf('(') + secondSemicolonIndex;
-		final int lastParensIndex = fields[0].substring(secondSemicolonIndex).lastIndexOf(')') + secondSemicolonIndex;
-		if (firstParensIndex == -1 || lastParensIndex == -1 || firstParensIndex > lastParensIndex) {
-			throw new SimilarityComputationException("Unrecognized origin " + origin + ".");
+		final int secondSemicolonIndex = this.fields[0].substring(firstSemicolonIndex + 1).indexOf(':') + firstSemicolonIndex + 1;
+		
+		//gets the position of the first @ character
+		if (this.fields[0].substring(secondSemicolonIndex).indexOf('@') == -1) {
+			throw new SimilarityComputationException("Unrecognized origin " + origin + " (first at-sign missing).");
 		}
-		final String methodClassName = fields[0].substring(1, firstSemicolonIndex); //remove leading '<'
-		final String methodDescriptor = fields[0].substring(firstSemicolonIndex + 1, secondSemicolonIndex);
-		final String methodName = fields[0].substring(secondSemicolonIndex + 1, firstParensIndex);
-		final String parameters = fields[0].substring(firstParensIndex + 1, lastParensIndex);
+		final int firstAtSignIndex = this.fields[0].substring(secondSemicolonIndex).indexOf('@') + secondSemicolonIndex;
+		
+		//gets the position of the end of the parameter list
+		final int endOfParameterList;
+		if (this.fields[0].substring(secondSemicolonIndex).lastIndexOf('@') == -1) {
+			endOfParameterList = this.fields[0].length() - 1;
+		} else {
+			endOfParameterList = this.fields[0].substring(secondSemicolonIndex).lastIndexOf('@') + secondSemicolonIndex;
+		}
+		if (firstAtSignIndex >= endOfParameterList) {
+			throw new SimilarityComputationException("Unrecognized origin " + origin + " (the origin does not appear to be well-terminated).");
+		}
+		final String methodClassName = this.fields[0].substring(1, firstSemicolonIndex);
+		final String methodDescriptor = this.fields[0].substring(firstSemicolonIndex + 1, secondSemicolonIndex);
+		final String methodName = this.fields[0].substring(secondSemicolonIndex + 1, firstAtSignIndex);
+		final String parameters = this.fields[0].substring(firstAtSignIndex + 1, endOfParameterList);
 		
 		//splits the parameters list into parameters
 		final ArrayList<String> parametersList = new ArrayList<>();
@@ -255,9 +268,9 @@ public class ParsedOrigin {
 				} else {
 					throw new SimilarityComputationException("Function application found with wrong parameters list: " + parameters + ".");
 				}
-			} else if (parameters.charAt(i) == '(' || parameters.charAt(i) == '[') {
+			} else if (parameters.charAt(i) == '<' || parameters.charAt(i) == '[') {
 				++nestingLevel;
-			} else if (parameters.charAt(i) == ')' || parameters.charAt(i) == ']') {
+			} else if (parameters.charAt(i) == '>' || parameters.charAt(i) == ']') {
 				--nestingLevel;
 			} //else nothing
 		}
@@ -274,7 +287,7 @@ public class ParsedOrigin {
 
 			final OriginAccessorMethodInvocation accessor = new OriginAccessorMethodInvocation(m, isMethodStatic, parametersList);
 			final Object ret = accessor.getActualObject(candidateObjects, candidateBackbone, constants, cache);
-			originAccessSpecifier[0] = accessor;
+			this.originAccessSpecifier[0] = accessor;
 			return ret;
 		} catch (NoSuchMethodException | ClassNotFoundException | SecurityException e) {
 			throw new SimilarityComputationException("Reflective exception while invoking method " + methodClassName + ":" + methodDescriptor + ":" + methodName + ": class not found, or method not found, or accessibility error. Exception: " + e.toString());
@@ -284,17 +297,17 @@ public class ParsedOrigin {
 	private Object parseAccessorIdentityHashCode(Object obj) throws FieldNotInCandidateException {
 		final OriginAccessorIdentityHashCode accessor = new OriginAccessorIdentityHashCode();
 		final Object ret = accessor.getActualObject(obj); 
-		originAccessSpecifier[nextUnparsed] = accessor;
+		this.originAccessSpecifier[this.nextUnparsed] = accessor;
 		return ret;
 	}
 
 	private Object parseAccessorArrayLocation(Object obj, Map<String, Object> candidateObjects, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache) 
 			throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
-		final String arrayAccessor = fields[nextUnparsed];
+		final String arrayAccessor = this.fields[this.nextUnparsed];
 		if (arrayAccessor.equals("length")) {
 			final OriginAccessorArrayLength accessor = new OriginAccessorArrayLength();
 			final Object ret = accessor.getActualObject(obj);
-			originAccessSpecifier[nextUnparsed] = accessor;
+			this.originAccessSpecifier[this.nextUnparsed] = accessor;
 			return ret;
 		} else if (arrayAccessor.matches("\\[.*\\]")) {
 			final String indexString = arrayAccessor.substring(1, arrayAccessor.length() - 1);
@@ -302,12 +315,12 @@ public class ParsedOrigin {
 				int index = Integer.parseInt(indexString);
 				final OriginAccessorArrayLocationResolvedIndex accessor = new OriginAccessorArrayLocationResolvedIndex(index);
 				final Object ret = accessor.getActualObject(obj); 
-				originAccessSpecifier[nextUnparsed] = accessor;
+				this.originAccessSpecifier[this.nextUnparsed] = accessor;
 				return ret;
 			} catch (NumberFormatException e) {
 				final OriginAccessorArrayLocationUnresolvedIndex accessor = new OriginAccessorArrayLocationUnresolvedIndex(indexString);
 				final Object ret = accessor.getActualObject(candidateObjects, obj, candidateBackbone, constants, cache); 
-				originAccessSpecifier[nextUnparsed] = accessor;
+				this.originAccessSpecifier[this.nextUnparsed] = accessor;
 				return ret;				
 			}
 		} else {
@@ -316,27 +329,28 @@ public class ParsedOrigin {
 	}
 
 	private Object parseAccessorField(Object obj) throws FieldNotInCandidateException {
-		final String fieldAndClassName = fields[nextUnparsed];
+		final String fieldAndClassName = this.fields[this.nextUnparsed];
 		final String[] fieldAndClassNameSplit = fieldAndClassName.split(":");
 		final String fieldName = fieldAndClassNameSplit[1];
 		final String className = fieldAndClassNameSplit[0];
 		final Field f = ReflectionUtils.getInheritedPrivateField(obj.getClass(), fieldName, className);
 		if (f == null) {
-			throw new SimilarityComputationException("Field name " + fields[nextUnparsed] + " of origin " + origin + " does not exist in the corresponding object");
+			throw new SimilarityComputationException("Field name " + this.fields[this.nextUnparsed] + " of origin " + origin + " does not exist in the corresponding object");
 		}
 		final OriginAccessorField accessor = new OriginAccessorField(f);
 		final Object ret = accessor.getActualObject(obj);
-		originAccessSpecifier[nextUnparsed] = accessor;
+		this.originAccessSpecifier[this.nextUnparsed] = accessor;
 		return ret;
 	}
 
 	private abstract class OriginAccessor {
 		abstract Object getActualObject(Map<String, Object> candidateObjects, Object obj, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache) 
-				throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException;
+		throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException;
 	}
 	
 	private class OriginAccessorStaticField extends OriginAccessor {
-		final Field field;
+		private final Field field;
+		
 		OriginAccessorStaticField(Field field) {
 			this.field = field;
 		}
@@ -347,17 +361,18 @@ public class ParsedOrigin {
 		}
 
 		Object getActualObject() {
-			field.setAccessible(true);
+			this.field.setAccessible(true);
 			try {
-				return field.get(null);
+				return this.field.get(null);
 			} catch (SecurityException | IllegalArgumentException | IllegalAccessException e) {
-				throw new SimilarityComputationException("Unexpected error while retrieving the value of a static field: " + field);
+				throw new SimilarityComputationException("Unexpected error while retrieving the value of a static field: " + this.field);
 			}
 		}
 	}
 
 	private class OriginAccessorRootObject extends OriginAccessor {
-		final String rootObjIdentifier;
+		private final String rootObjIdentifier;
+		
 		OriginAccessorRootObject(String rootObjIdentifier) {
 			this.rootObjIdentifier = rootObjIdentifier;
 		}
@@ -368,14 +383,14 @@ public class ParsedOrigin {
 		}
 
 		Object getActualObject(Map<String, Object> candidateObjects) {
-			return candidateObjects.get(rootObjIdentifier);
+			return candidateObjects.get(this.rootObjIdentifier);
 		}
 	}
 	
 	private class OriginAccessorMethodInvocation extends OriginAccessor {
-		final Method method;
-		final boolean isMethodStatic;
-		final List<String> parametersList;
+		private final Method method;
+		private final boolean isMethodStatic;
+		private final List<String> parametersList;
 
 		OriginAccessorMethodInvocation(Method method, boolean isMethodStatic, List<String> parametersList) {
 			this.method = method;
@@ -385,28 +400,28 @@ public class ParsedOrigin {
 
 		@Override
 		Object getActualObject(Map<String, Object> candidateObjects, Object obj, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache)
-				throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
+		throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
 			return getActualObject(candidateObjects, candidateBackbone, constants, cache);
 		}
 
 		Object getActualObject(Map<String, Object> candidateObjects, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache) throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
 			//gets the parameters in the list
-			final Object[] objParameters = new Object[parametersList.size()];
-			for (int i = 0; i < parametersList.size(); ++i) {
-				final String parameter = parametersList.get(i);
+			final Object[] objParameters = new Object[this.parametersList.size()];
+			for (int i = 0; i < this.parametersList.size(); ++i) {
+				final String parameter = this.parametersList.get(i);
 				final Object objParameter = eval(parameter, candidateObjects, candidateBackbone, constants, cache);
 				objParameters[i] = objParameter;
 			}
 			
 			try {
-				method.setAccessible(true);
-				if (isMethodStatic) {
-					return method.invoke(null, objParameters);
+				this.method.setAccessible(true);
+				if (this.isMethodStatic) {
+					return this.method.invoke(null, objParameters);
 				} else if (objParameters[0] == null) {
 					//instance method with a null 'this' parameter
 					throw new FieldNotInCandidateException();
 				} else {
-					return method.invoke(objParameters[0], Arrays.copyOfRange(objParameters, 1, objParameters.length));
+					return this.method.invoke(objParameters[0], Arrays.copyOfRange(objParameters, 1, objParameters.length));
 				}
 			} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 				throw new SimilarityComputationException("Reflective exception while invoking method " + method + "; exception: " + e.toString());
@@ -414,11 +429,12 @@ public class ParsedOrigin {
 		}
 	}
 
-	private class OriginAccessorIdentityHashCode  extends OriginAccessor {
+	private class OriginAccessorIdentityHashCode extends OriginAccessor {
 		private final Method identityHashCodeMethod;
+		
 		OriginAccessorIdentityHashCode() {
 			try {
-				identityHashCodeMethod = System.class.getMethod("identityHashCode", Object.class);
+				this.identityHashCodeMethod = System.class.getMethod("identityHashCode", Object.class);
 			} catch (NoSuchMethodException | SecurityException e) {
 				throw new SimilarityComputationException("Reflective exception while seacrhing for method identityHashCode; exception: " + e.toString());
 			}
@@ -426,7 +442,7 @@ public class ParsedOrigin {
 
 		@Override
 		Object getActualObject(Map<String, Object> candidateObjects, Object obj, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache) 
-				throws FieldNotInCandidateException {
+		throws FieldNotInCandidateException {
 			return getActualObject(obj);
 		}
 
@@ -435,9 +451,9 @@ public class ParsedOrigin {
 				throw new FieldNotInCandidateException();
 			}	
 			try {
-				obj = identityHashCodeMethod.invoke(obj);
+				obj = this.identityHashCodeMethod.invoke(obj);
 			} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-				throw new SimilarityComputationException("Reflective exception while invoking method " + identityHashCodeMethod + "; exception: " + e.toString());
+				throw new SimilarityComputationException("Reflective exception while invoking method " + this.identityHashCodeMethod + "; exception: " + e.toString());
 			}
 			return obj;
 		}		
@@ -445,13 +461,14 @@ public class ParsedOrigin {
 	
 	private class OriginAccessorField extends OriginAccessor {
 		private final Field field;
+		
 		OriginAccessorField(Field field) {
 			this.field = field;
 		}
 
 		@Override
 		Object getActualObject(Map<String, Object> candidateObjects, Object obj, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache) 
-				throws FieldNotInCandidateException {
+		throws FieldNotInCandidateException {
 			return getActualObject(obj);
 		}
 
@@ -460,8 +477,8 @@ public class ParsedOrigin {
 				throw new FieldNotInCandidateException();
 			}	
 			try {
-				field.setAccessible(true);
-				return field.get(obj);
+				this.field.setAccessible(true);
+				return this.field.get(obj);
 			} catch (IllegalArgumentException | IllegalAccessException e) {
 				throw new FieldNotInCandidateException();
 				//throw new SimilarityComputationException("Unexpected error while retrieving the value of member field: " + field + ", from object of class " + obj.getClass());
@@ -473,7 +490,8 @@ public class ParsedOrigin {
 		OriginAccessorArrayLength() { }
 		
 		@Override
-		Object getActualObject(Map<String, Object> candidateObjects, Object obj, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache) throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
+		Object getActualObject(Map<String, Object> candidateObjects, Object obj, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache) 
+		throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
 			if (obj == null) {
 				throw new FieldNotInCandidateException();
 			}	
@@ -504,7 +522,7 @@ public class ParsedOrigin {
 		Object getActualObject(Object obj) 
 				throws FieldNotInCandidateException {
 			try {
-				return Array.get(obj, index);
+				return Array.get(obj, this.index);
 			} catch (ArrayIndexOutOfBoundsException e) {
 				throw new FieldNotInCandidateException();
 			}
@@ -527,8 +545,8 @@ public class ParsedOrigin {
 		}	
 		
 		private Object retrieveFromArray(Object obj, CandidateBackbone candidateBackbone, Map<String, Object> candidateObjects, Map<Long, String> constants, SushiLibCache cache) 
-				throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
-			final Object value = eval(indexString, candidateObjects, candidateBackbone, constants, cache);
+		throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
+			final Object value = eval(this.indexString, candidateObjects, candidateBackbone, constants, cache);
 			if (value instanceof Integer) {
 			    try {
 			    	final int index = ((Integer) value).intValue();
@@ -537,7 +555,7 @@ public class ParsedOrigin {
 			    	throw new FieldNotInCandidateException();
 			    }
 			} else {
-				throw new SimilarityComputationException("Unexpected array access with noninteger index " + indexString + ".");			
+				throw new SimilarityComputationException("Unexpected array access with noninteger index " + this.indexString + ".");			
 			}
 		}
 	}
