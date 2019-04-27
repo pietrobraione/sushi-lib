@@ -9,12 +9,17 @@ public class DistanceBySimilarityWithPathCondition {
 	private static final Logger logger = new Logger(DistanceBySimilarityWithPathCondition.class);
 
 	public static double distance(List<ClauseSimilarityHandler> pathConditionHandler, Map<String, Object> candidateObjects, Map<Long, String> constants, ClassLoader classLoader) {
+		return distance(pathConditionHandler, candidateObjects, constants, classLoader, null/*no-caching behavior*/); 
+	}
+
+	
+	public static double distance(List<ClauseSimilarityHandler> pathConditionHandler, Map<String, Object> candidateObjects, Map<Long, String> constants, ClassLoader classLoader, SushiLibCache cache) {
 		logger.debug("Computing similarity with path condition: BEGIN ");
 		
 		double achievedSimilarity = 0.0d;		
 		CandidateBackbone backbone = new CandidateBackbone(classLoader);
 		for (ClauseSimilarityHandler handler : pathConditionHandler) {
-			achievedSimilarity += handler.evaluateSimilarity(backbone, candidateObjects, constants);
+			achievedSimilarity += handler.evaluateSimilarity(backbone, candidateObjects, constants, cache);
 		}
 		
 		logger.debug("Computing similarity with path condition: END: Similarity is " + achievedSimilarity);
