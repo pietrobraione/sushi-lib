@@ -144,7 +144,7 @@ public class ParsedOrigin {
 		
 		//2. retrieve the object for the already parsed fields
 		Object obj = null;
-		for (int i = 0; i < this.originAccessSpecifier.length; i++) {
+		for (int i = 0; i < this.originAccessSpecifier.length; ++i) {
 			final OriginAccessor accessor = this.originAccessSpecifier[i]; 
 			if (accessor == null) { 
 				if (i == 1) {
@@ -185,6 +185,7 @@ public class ParsedOrigin {
 					} else {
 						obj = parseAccessorField(obj);
 					}
+					++this.nextUnparsed;
 				}
 			}
 		}
@@ -198,14 +199,14 @@ public class ParsedOrigin {
 		try {
 			final Field f = Class.forName(className).getDeclaredField(fieldName);
 			if (f == null) {
-				throw new SimilarityComputationException("Field name " + fieldName + " in origin " + origin + " does not exist in the class " + className + ".");
+				throw new SimilarityComputationException("Static field with name " + fieldName + " does not exist in class " + className + "; origin " + this.origin + ".");
 			}
 			final OriginAccessorStaticField accessor = new OriginAccessorStaticField(f);
 			final Object ret = accessor.getActualObject();
 			this.originAccessSpecifier[0] = accessor;
 			return ret;
 		} catch (NoSuchFieldException | SecurityException | ClassNotFoundException e) {
-			throw new SimilarityComputationException("Static field origin " + origin + " does not exist: class " + className + ", field " + fieldName + " : " + e );
+			throw new SimilarityComputationException("Reflective exception while accessing static field " + className + "." + fieldName + ". Exception: " + e );
 		}
 
 	}
@@ -282,7 +283,7 @@ public class ParsedOrigin {
 			final Method m = method(methodClass, methodDescriptor, methodName);
 			final boolean isMethodStatic = Modifier.isStatic(m.getModifiers());
 			if (parametersList.size() != splitParametersDescriptors(methodDescriptor).length + (isMethodStatic ? 0 : 1)) {
-				throw new RuntimeException("Internal error: parameters list (" + parameters + ") was split into " + parametersList.size() + " parameters, but descriptor " + methodDescriptor + " says that they should be " + splitParametersDescriptors(methodDescriptor).length + ".");
+				throw new RuntimeException("Internal error: parameters list (" + parameters + ") was split into " + parametersList.size() + " parameters, but descriptor " + methodDescriptor + " says that there should be " + splitParametersDescriptors(methodDescriptor).length + " parameters instead.");
 			}
 
 			final OriginAccessorMethodInvocation accessor = new OriginAccessorMethodInvocation(m, isMethodStatic, parametersList);
@@ -290,7 +291,7 @@ public class ParsedOrigin {
 			this.originAccessSpecifier[0] = accessor;
 			return ret;
 		} catch (NoSuchMethodException | ClassNotFoundException | SecurityException e) {
-			throw new SimilarityComputationException("Reflective exception while invoking method " + methodClassName + ":" + methodDescriptor + ":" + methodName + ": class not found, or method not found, or accessibility error. Exception: " + e.toString());
+			throw new SimilarityComputationException("Reflective exception while invoking method " + methodClassName + ":" + methodDescriptor + ":" + methodName + ". Exception: " + e.toString());
 		} 		
 	}
 
@@ -302,7 +303,7 @@ public class ParsedOrigin {
 	}
 
 	private Object parseAccessorArrayLocation(Object obj, Map<String, Object> candidateObjects, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache) 
-			throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
+	throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
 		final String arrayAccessor = this.fields[this.nextUnparsed];
 		if (arrayAccessor.equals("length")) {
 			final OriginAccessorArrayLength accessor = new OriginAccessorArrayLength();
@@ -335,7 +336,7 @@ public class ParsedOrigin {
 		final String className = fieldAndClassNameSplit[0];
 		final Field f = ReflectionUtils.getInheritedPrivateField(obj.getClass(), fieldName, className);
 		if (f == null) {
-			throw new SimilarityComputationException("Field name " + this.fields[this.nextUnparsed] + " of origin " + origin + " does not exist in the corresponding object");
+			throw new SimilarityComputationException("Field with name " + fieldName + " that should be declared in class " + className + " does not exist in object with class " + obj.getClass().getName() + " and origin " + this.origin + ".");
 		}
 		final OriginAccessorField accessor = new OriginAccessorField(f);
 		final Object ret = accessor.getActualObject(obj);
