@@ -57,7 +57,7 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
     private HashMap<Long, String> stringLiterals = null;
     private StringBuilder output = new StringBuilder();
     private int testCounter = 0;
-    
+
     public StateFormatterSushiPartialHeap(long methodNumber,
                                           Supplier<Long> traceCounterSupplier,
                                           Supplier<State> initialStateSupplier, 
@@ -76,9 +76,9 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
 
     @Override
     public void setConstants(Map<Long, String> stringLiterals) {
-    	this.stringLiterals = new HashMap<>(stringLiterals); //safety copy
+        this.stringLiterals = new HashMap<>(stringLiterals); //safety copy
     }
-    
+
     @Override
     public void formatPrologue() {
         this.output.append(PROLOGUE);
@@ -89,33 +89,33 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
             this.output.append(this.traceCounterSupplier.get());
         }
         this.output.append(" {\n\n");
-    	int i = 0;
-    	for (String lit : this.stringLiterals.values()) {
-    		this.output.append(INDENT_1);
-    		this.output.append("private static final String STRING_LITERAL_");
-    		this.output.append(i);
-    		this.output.append(" = \"");
-    		this.output.append(lit);
-    		this.output.append("\";\n");
-    		++i;
-    	}
-    	this.output.append("\n");
+        int i = 0;
+        for (String lit : this.stringLiterals.values()) {
+            this.output.append(INDENT_1);
+            this.output.append("private static final String STRING_LITERAL_");
+            this.output.append(i);
+            this.output.append(" = \"");
+            this.output.append(lit);
+            this.output.append("\";\n");
+            ++i;
+        }
+        this.output.append("\n");
     }
 
     @Override
     public void formatState(State state) {
         try {
-			new MethodUnderTest(this.output, this.initialStateSupplier.get(), state, this.modelSupplier.get(), this.testCounter);
-		} catch (FrozenStateException e) {
-			this.output.delete(0, this.output.length());
-		}
+            new MethodUnderTest(this.output, this.initialStateSupplier.get(), state, this.modelSupplier.get(), this.testCounter);
+        } catch (FrozenStateException e) {
+            this.output.delete(0, this.output.length());
+        }
         ++this.testCounter;
     }
-    
+
     public void formatEpilogue() {
         this.output.append("}\n");
     }
-    
+
     @Override
     public String emit() {
         return this.output.toString();
@@ -126,22 +126,22 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
         this.output = new StringBuilder();
         this.testCounter = 0;
     }
-    
+
     private static final String INDENT_1 = "    ";
     private static final String INDENT_2 = INDENT_1 + INDENT_1;
     private static final String INDENT_3 = INDENT_1 + INDENT_2;
     private static final String PROLOGUE =
-        "import static " + sushi.compile.distance.Distance.class.getName() + ".distance;\n" +
-        "\n" +
-        "import " + sushi.compile.reflection.Allocator.class.getName() + ";\n" +
-        "import " + sushi.compile.reflection.AccessibleObject.class.getName() + ";\n" +
-        "import " + sushi.compile.reflection.ObjectField.class.getName() + ";\n" +
-        "import " + sushi.logging.Level.class.getName() + ";\n" +
-        "import " + sushi.logging.Logger.class.getName() + ";\n" +
-        "\n" +
-        "import java.util.HashSet;\n" +
-        "\n" +
-        "public class EvoSuiteWrapper";
+    "import static " + sushi.compile.distance.Distance.class.getName() + ".distance;\n" +
+    "\n" +
+    "import " + sushi.compile.reflection.Allocator.class.getName() + ";\n" +
+    "import " + sushi.compile.reflection.AccessibleObject.class.getName() + ";\n" +
+    "import " + sushi.compile.reflection.ObjectField.class.getName() + ";\n" +
+    "import " + sushi.logging.Level.class.getName() + ";\n" +
+    "import " + sushi.logging.Logger.class.getName() + ";\n" +
+    "\n" +
+    "import java.util.HashSet;\n" +
+    "\n" +
+    "public class EvoSuiteWrapper";
 
     private static class MethodUnderTest {
         private final StringBuilder s;
@@ -150,7 +150,7 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
         private final HashSet<PrimitiveSymbolic> primitiveSymbolsDone = new HashSet<>();
         private boolean panic = false;
         private ClauseAssume clauseLength = null;
-        
+
         MethodUnderTest(StringBuilder s, State initialState, State finalState, Map<PrimitiveSymbolic, Simplex> model, int testCounter) 
         throws FrozenStateException {
             this.s = s;
@@ -160,7 +160,7 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
             appendIfStatement(initialState, finalState, testCounter);
             appendMethodEnd(finalState, testCounter);
         }
-        
+
         private void appendMethodDeclaration(State initialState, State finalState, int testCounter) {
             if (this.panic) {
                 return;
@@ -172,9 +172,9 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
             final List<Symbolic> inputs;
             try {
                 inputs = initialState.getStack().get(0).localVariables().values().stream()
-                         .filter((v) -> v.getValue() instanceof Symbolic)
-                         .map((v) -> (Symbolic) v.getValue())
-                         .collect(Collectors.toList());
+                .filter((v) -> v.getValue() instanceof Symbolic)
+                .map((v) -> (Symbolic) v.getValue())
+                .collect(Collectors.toList());
             } catch (IndexOutOfBoundsException | FrozenStateException e) {
                 throw new UnexpectedInternalException(e);
             }            
@@ -208,7 +208,7 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
             this.s.append(finalState.getSequenceNumber());
             this.s.append("]\n");
         }
-        
+
         private void appendInputsInitialization(State finalState, Map<PrimitiveSymbolic, Simplex> model, int testCounter) 
         throws FrozenStateException {
             if (this.panic) {
@@ -257,7 +257,7 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
                 this.s.append('\n');
             }
         }
-        
+
         private void appendIfStatement(State initialState, State finalState, int testCounter) {
             if (this.panic) {
                 return;
@@ -281,7 +281,7 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
             this.s.append(INDENT_2);
             this.s.append("return d;\n");
         }
-        
+
         private void appendMethodEnd(State finalState, int testCounter) {
             if (this.panic) {
                 this.s.delete(0, s.length());
@@ -298,7 +298,7 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
                 this.s.append("}\n");
             }
         }
-        
+
         private void makeVariables(State finalState) {
             final Collection<Clause> pathCondition = finalState.getPathCondition();
             for (Clause clause : pathCondition) {
@@ -315,7 +315,7 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
                 } //else do nothing
             }
         }
-        
+
         private void setWithNewObject(State finalState, Symbolic symbol, long heapPosition, 
                                       Iterator<Clause> iterator, Map<PrimitiveSymbolic, Simplex> model) 
         throws FrozenStateException {        
@@ -353,7 +353,7 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
                 this.s.append("\"));");
             }
         }
-        
+
         private void setWithNull(ReferenceSymbolic symbol) {
             final String var = getVariableFor(symbol);
             if (hasMemberAccessor(var)) {
@@ -375,7 +375,7 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
                 this.s.append("\"));");
             }
         }
-        
+
         private void setWithAlias(State finalState, Symbolic symbol, long heapPosition) {
             final String var = getVariableFor(symbol);
             final String value = getValue(getOriginOfObjectInHeap(finalState, heapPosition));
@@ -402,7 +402,7 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
                 this.s.append("\"));");
             }
         }
-        
+
         private Simplex arrayLength(ClauseAssume clause, Map<PrimitiveSymbolic, Simplex> model) {
             //the clause has shape {length} >= 0 - i.e., it has just
             //one symbol, the length
@@ -447,28 +447,28 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
             }
             return retVal.toString();
         }
-                
+
         private String generateName(String name) {
             return name.replace("{ROOT}:", "__ROOT_").replaceAll("_PARAM\\[(\\d+)\\]", "_PARAM_$1_");
         }
-        
+
         private void makeVariableFor(Symbolic symbol) {
             final String origin = symbol.asOriginString();
             if (!this.symbolsToVariables.containsKey(symbol)) {
                 this.symbolsToVariables.put(symbol, generateName(origin));
             }
         }
-        
+
         private String getVariableFor(Symbolic symbol) {
             return this.symbolsToVariables.get(symbol);
         }
-        
+
         private static String getTypeOfObjectInHeap(State finalState, long num) throws FrozenStateException {
             final Map<Long, Objekt> heap = finalState.getHeap();
             final Objekt o = heap.get(num);
             return o.getType().getClassName();
         }
-        
+
         private String getOriginOfObjectInHeap(State finalState, long heapPos){
             final Collection<Clause> path = finalState.getPathCondition();
             for (Clause clause : path) {
@@ -482,7 +482,7 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
             }
             return null;
         }
-        
+
         private boolean hasMemberAccessor(String s) {
             return (s.indexOf('.') != -1);
         }
@@ -512,7 +512,7 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
             }
             return a;
         }
-        
+
         private String getValue(String accessExpression) {
             if (hasMemberAccessor(accessExpression)) {
                 final String container = "new AccessibleObject(" + accessExpression.substring(0, accessExpression.indexOf('.')) + ")";
@@ -522,7 +522,7 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
                 return accessExpression;
             }
         }
-        
+
         private void setByReflection(String accessExpression, String value) {
             final String container = "new AccessibleObject(" + accessExpression.substring(0, accessExpression.indexOf('.')) + ")";
             final String accessExpressionWithGetters = replaceAccessorsWithGetters(container, accessExpression.substring(0, accessExpression.lastIndexOf('.')));
@@ -534,7 +534,7 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
             this.s.append(value);
             this.s.append(");");
         }
-        
+
         private void setNumericAssumption(Primitive assumption, Map<PrimitiveSymbolic, Simplex> model) {
             final Set<PrimitiveSymbolic> symbols = symbolsIn(assumption);
             for (PrimitiveSymbolic symbol : symbols) {
@@ -562,44 +562,44 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
                 }
             }
         }
-        
+
         private Set<PrimitiveSymbolic> symbolsIn(Primitive e) {
             final HashSet<PrimitiveSymbolic> symbols = new HashSet<>();
             PrimitiveVisitor v = new PrimitiveVisitor() {
-                
+
                 @Override
                 public void visitWideningConversion(WideningConversion x) throws Exception {
                     x.getArg().accept(this);
                 }
-                
+
                 @Override
                 public void visitTerm(Term x) throws Exception { }
-                
+
                 @Override
                 public void visitSimplex(Simplex x) throws Exception { }
-                
+
                 @Override
                 public void visitPrimitiveSymbolicAtomic(PrimitiveSymbolicAtomic s) {
                     symbols.add(s);
                 }
-                
+
                 @Override
                 public void visitNarrowingConversion(NarrowingConversion x) throws Exception {
                     x.getArg().accept(this);
                 }
-                
+
                 @Override
                 public void visitPrimitiveSymbolicApply(PrimitiveSymbolicApply x) throws Exception {
                     for (Value v : x.getArgs()) {
-                    	if (v instanceof Primitive) { 
-                    		((Primitive) v).accept(this);
-                    	} else {
-                    		//TODO
-                    		throw new RuntimeException("Found a symbolic function application that returns a primitive but has as arg a reference: " + v.toString());
-                    	}
+                        if (v instanceof Primitive) { 
+                            ((Primitive) v).accept(this);
+                        } else {
+                            //TODO
+                            throw new RuntimeException("Found a symbolic function application that returns a primitive but has as arg a reference: " + v.toString());
+                        }
                     }
                 }
-                
+
                 @Override
                 public void visitExpression(Expression e) throws Exception {
                     if (e.isUnary()) {
@@ -609,11 +609,11 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
                         e.getSecondOperand().accept(this);
                     }
                 }
-                
+
                 @Override
                 public void visitAny(Any x) { }
             };
-            
+
             try {
                 e.accept(v);
             } catch (Exception exc) {
@@ -622,7 +622,7 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
             }
             return symbols;
         }
-        
+
         private void setWithNumericValue(PrimitiveSymbolic symbol, Simplex value) {
             final boolean variableNotYetCreated = (getVariableFor(symbol) == null);
             if (variableNotYetCreated) {
