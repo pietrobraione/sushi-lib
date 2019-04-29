@@ -4,28 +4,23 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class SushiLibCache {
-	
-	private final Map<String, ParsedOrigin> parsedOrigins = new HashMap<>();
-	
-	/* OThe following variables are used only for profiling purposes:
+    private final Map<String, ParsedOrigin> parsedOrigins = new HashMap<>();
+
+    /* OThe following variables are used only for profiling purposes:
 	int attempts = 0;
 	int partialHits = 0;
 	int hits = 0;
 	int misses = 0;
 	int nextOutputAtAttempt = 100; */
-	
-	public SushiLibCache() {
-	}
-	
-	public ParsedOrigin getParsedOrigin(String origin)  {
-		final ParsedOrigin cachedOrigin = parsedOrigins.get(origin);
-		if (cachedOrigin != null) {
-			return cachedOrigin;
-		} else {
-			final ParsedOrigin newCachedOrigin = new ParsedOrigin(origin);
-			parsedOrigins.put(origin, newCachedOrigin);
-			return newCachedOrigin;
-		}
-	}
+
+    public SushiLibCache() { }
+
+    public ParsedOrigin getParsedOrigin(String origin)  {
+        if (!this.parsedOrigins.containsKey(origin)) {
+            final ParsedOrigin newCachedOrigin = new ParsedOrigin(origin);
+            this.parsedOrigins.put(origin, newCachedOrigin);
+        }
+        return this.parsedOrigins.get(origin);
+    }
 
 }
