@@ -2,6 +2,7 @@ package sushi.configure;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 
 import jbse.apps.settings.SettingsReader;
@@ -12,13 +13,13 @@ public class ParametersModifier {
 	public void modify(JBSEParameters p)
 	throws FileNotFoundException, ParseException, IOException { }
 	
-	protected final void loadHEXFile(String path, JBSEParameters p) 
+	protected final void loadHEXFile(Path path, JBSEParameters p) 
 	throws ParseException, IOException {
 		final SettingsReader sr;
 		try {
 			sr = new SettingsReader(path);
 		} catch (jbse.apps.settings.ParseException e) {
-			throw new ParseException("File " + path + ": " + e.getMessage());
+			throw new ParseException("File " + path.toString() + ": " + e.getMessage());
 		}
 		sr.fillRunnerParameters(p.getRunnerParameters());
 		sr.fillRulesLICS(p.getLICSRulesRepo());
