@@ -76,58 +76,72 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 
     @Override
     public void formatPrologue() {
-        final long traceCounter = (this.traceCounterSupplier == null ? -1 : this.traceCounterSupplier.get());
-        this.output.append(PROLOGUE_1);
-        this.output.append('_');
-        this.output.append(this.methodNumber);
-        if (this.traceCounterSupplier != null) {
+        try {
+            //package declaration
+            this.output.append("package ");
+            final State initialState = this.initialStateSupplier.get();
+            final String initialCurrentClassName = initialState.getStack().get(0).getCurrentClass().getClassName();
+            final String initialCurrentClassPackageName = initialCurrentClassName.substring(0, initialCurrentClassName.lastIndexOf('/')).replace('/', '.');
+            this.output.append(initialCurrentClassPackageName);
+            this.output.append(";\n\n");
+            
+            final long traceCounter = (this.traceCounterSupplier == null ? -1 : this.traceCounterSupplier.get());
+
+            //imports and class declaration
+            this.output.append(PROLOGUE_1);
             this.output.append('_');
-            this.output.append(traceCounter);
-        }
-        this.output.append(PROLOGUE_2);
-        for (Map.Entry<Long, String> lit : this.stringLiterals.entrySet()) {
-            this.output.append(INDENT_1);
-            this.output.append("private static final String CONST_");
-            this.output.append(lit.getKey());
-            this.output.append(" = \"");
-            this.output.append(lit.getValue());
-            this.output.append("\";\n");
-        }
-        this.output.append(PROLOGUE_3);
-        this.output.append('_');
-        this.output.append(this.methodNumber);
-        if (this.traceCounterSupplier != null) {
+            this.output.append(this.methodNumber);
+            if (this.traceCounterSupplier != null) {
+                this.output.append('_');
+                this.output.append(traceCounter);
+            }
+            
+            //constant declarations
+            this.output.append(PROLOGUE_2);
+            for (Map.Entry<Long, String> lit : this.stringLiterals.entrySet()) {
+                this.output.append(INDENT_1);
+                this.output.append("private static final String CONST_");
+                this.output.append(lit.getKey());
+                this.output.append(" = \"");
+                this.output.append(lit.getValue());
+                this.output.append("\";\n");
+            }
+            
+            //private members and constructor declaration
+            this.output.append(PROLOGUE_3);
             this.output.append('_');
-            this.output.append(traceCounter);
-        }		
-        this.output.append("(ClassLoader classLoader) {\n");
-        this.output.append(INDENT_2);
-        this.output.append("this.classLoader = classLoader;\n");
-        for (long heapPos : new TreeSet<Long>(stringLiterals.keySet())) {
+            this.output.append(this.methodNumber);
+            if (this.traceCounterSupplier != null) {
+                this.output.append('_');
+                this.output.append(traceCounter);
+            }		
+            this.output.append("(ClassLoader classLoader) {\n");
             this.output.append(INDENT_2);
-            this.output.append("this.constants.put(");
-            this.output.append(heapPos);
-            this.output.append("L, CONST_");
-            this.output.append(heapPos);
-            this.output.append(");\n");
+            this.output.append("this.classLoader = classLoader;\n");
+            for (long heapPos : new TreeSet<Long>(stringLiterals.keySet())) {
+                this.output.append(INDENT_2);
+                this.output.append("this.constants.put(");
+                this.output.append(heapPos);
+                this.output.append("L, CONST_");
+                this.output.append(heapPos);
+                this.output.append(");\n");
+            }
+            this.output.append(INDENT_1);
+            this.output.append("}\n\n");
+        } catch (FrozenStateException e) {
+            this.output.delete(0, this.output.length());
         }
-        this.output.append(INDENT_1);
-        this.output.append("}\n\n");
     }
 
     @Override
     public void formatState(State state) {
         try {
             new MethodUnderTest(this.output, this.initialStateSupplier.get(), state, this.testCounter);
+            this.output.append("}\n");
         } catch (FrozenStateException e) {
             this.output.delete(0, this.output.length());
         }
         ++this.testCounter;
-    }
-
-    @Override
-    public void formatEpilogue() {
-        this.output.append("}\n");
     }
 
     @Override
