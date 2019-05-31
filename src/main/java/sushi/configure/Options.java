@@ -13,14 +13,13 @@ import org.kohsuke.args4j.spi.PathOptionHandler;
 import sushi.logging.Level;
 
 public class Options {
-
-	private static Options instance = null;
+	private static Options INSTANCE = null;
 
 	public static Options I() {
-		if (instance == null) {
-			instance = new Options();
+		if (INSTANCE == null) {
+			INSTANCE = new Options();
 		}
-		return instance;
+		return INSTANCE;
 	}
 
 	@Option(name = "-help",
@@ -156,9 +155,9 @@ public class Options {
 	private Options() { }
 	
 	public boolean isConsistent() {
-		if (paramsClass == null &&
-			targetClassSignature == null &&
-			targetMethodSignature == null) {
+		if (this.paramsClass == null &&
+			this.targetClassSignature == null &&
+			this.targetMethodSignature == null) {
 			return false;
 		}
 		return true;
