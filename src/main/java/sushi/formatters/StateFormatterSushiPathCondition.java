@@ -255,7 +255,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             this.s.append(") throws Exception {\n");
             this.s.append(INDENT_2);
             this.s.append("//generated for state ");
-            this.s.append(finalState.getIdentifier());
+            this.s.append(finalState.getBranchIdentifier());
             this.s.append('[');
             this.s.append(finalState.getSequenceNumber());
             this.s.append("]\n");
@@ -366,7 +366,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 this.s.append("//Unable to generate test case ");
                 this.s.append(testCounter);
                 this.s.append(" for state ");
-                this.s.append(finalState.getIdentifier());
+                this.s.append(finalState.getBranchIdentifier());
                 this.s.append('[');
                 this.s.append(finalState.getSequenceNumber());
                 this.s.append("]\n");
