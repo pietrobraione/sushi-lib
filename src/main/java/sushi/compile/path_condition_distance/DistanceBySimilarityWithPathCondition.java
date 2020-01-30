@@ -17,7 +17,7 @@ public class DistanceBySimilarityWithPathCondition {
         logger.debug("Computing similarity with path condition: ");
 
         double achievedSimilarity = 0.0d;		
-        CandidateBackbone backbone = new CandidateBackbone(classLoader);
+        CandidateBackbone backbone = CandidateBackbone._I(classLoader); 
         for (ClauseSimilarityHandler handler : pathConditionSimilarityHandlers) {
             achievedSimilarity += handler.evaluateSimilarity(backbone, candidateObjects, constants, cache);
         }
@@ -26,7 +26,7 @@ public class DistanceBySimilarityWithPathCondition {
 
         final double goalSimilarity = pathConditionSimilarityHandlers.size();
         final double distance = goalSimilarity - achievedSimilarity;
-        assert (distance > 0);
+        assert (distance >= 0);
 
         logger.debug("Distance from path condition is " + distance);
 

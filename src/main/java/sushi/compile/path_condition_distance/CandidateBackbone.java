@@ -7,12 +7,14 @@ import java.util.Map;
 import java.util.Set;
 
 public class CandidateBackbone {
+	private static CandidateBackbone _I = null;
+	private static boolean reuseBackbone = false;
+
 	private final ClassLoader classLoader;
 	
 	// We keep the direct and reverse mapping between visited objects and their origins 
 	private final Map<ObjectMapWrapper, String> visitedObjects = new HashMap<ObjectMapWrapper, String>(); 
 	private final Map<String, Object> visitedOrigins = new HashMap<String, Object>(); 
-
 	private final Collection<String> invalidFieldPaths = new HashSet<String>(); 
 	
 	public CandidateBackbone(ClassLoader classLoader) {
@@ -23,13 +25,33 @@ public class CandidateBackbone {
 		return this.classLoader;
 	}
 	
-	private void storeInBackbone(Object obj, String origin) {
-		// If another origin already exist, this is an alias path
-		// and then it shall not be stored
-		if (!this.visitedObjects.containsKey(new ObjectMapWrapper(obj))) {
-			this.visitedOrigins.put(origin, obj);		
-			this.visitedObjects.put(new ObjectMapWrapper(obj), origin);
+	public static CandidateBackbone _I(ClassLoader classLoader) {
+		if (!reuseBackbone || _I == null) {
+			_I = new CandidateBackbone(classLoader);
 		}
+		return _I;
+	}
+	
+	public static void resetAndReuseUntilReset() {
+		reuseBackbone = true;
+		_I = null;
+	}
+
+	private void storeInBackbone(Object obj, String origin) {
+		// If another origin already exist for a non-null object, this is an alias path
+		// and then it shall not be stored
+		// Moreover null values are stored with corresponding origins, but not vice-versa since 
+		// they do not participate in deciding aliases 
+		if ((obj == null && !this.visitedOrigins.containsKey(origin)) || (obj != null && !this.visitedObjects.containsKey(new ObjectMapWrapper(obj)))) {
+			this.visitedOrigins.put(origin, obj);
+			if (obj != null) {
+				this.visitedObjects.put(new ObjectMapWrapper(obj), origin);
+			}
+		}
+	}
+
+	public boolean isVisitedObject(String origin) {
+		return this.visitedOrigins.containsKey(origin);
 	}
 
 	public Object getVisitedObject(String origin) {
@@ -82,15 +104,13 @@ public class CandidateBackbone {
 		}
 		
 		//check in the cache of the visited object
-		Object obj = getVisitedObject(origin);
-		if (obj != null) {
-			return obj;
+		if (isVisitedObject(origin)) {
+			return getVisitedObject(origin);
 		}
 		
 		ParsedOrigin parsedOrigin = cache.getParsedOrigin(origin);
-		obj = parsedOrigin.get(candidateObjects, this, constants, cache);
+		Object obj = parsedOrigin.get(candidateObjects, this, constants, cache);
 		storeInBackbone(obj, origin);
-
 		return obj;
 	}
 	
