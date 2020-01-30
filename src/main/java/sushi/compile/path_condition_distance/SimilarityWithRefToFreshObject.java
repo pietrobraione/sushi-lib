@@ -16,6 +16,11 @@ public class SimilarityWithRefToFreshObject extends SimilarityWithRef {
 		this.theReferredClass = theReferredClass;
 	}
 
+        public SimilarityWithRefToFreshObject(String theReferenceOrigin) {
+            super(theReferenceOrigin);
+            this.theReferredClass = null;
+        }
+
 	@Override
 	protected double evaluateSimilarity(CandidateBackbone backbone, Object referredObject) {
 		logger.debug("Ref to a fresh object");
@@ -53,7 +58,13 @@ public class SimilarityWithRefToFreshObject extends SimilarityWithRef {
 			return similarity;
 		}
 			
-		if (!referredObject.getClass().equals(theReferredClass)) {
+		if (this.theReferredClass == null) {
+                    logger.debug(theReferenceOrigin + " refers to an object compatible with its static type");
+                    similarity += sameClassSimilarity + samePackageSimilarity;
+		} else if (referredObject.getClass().equals(theReferredClass)) {
+                    logger.debug(theReferenceOrigin + " refers to an object that matches " + theReferredClass);
+                    similarity += sameClassSimilarity + samePackageSimilarity;
+                } else {
 			logger.debug(theReferenceOrigin + " refers to an object of class " + referredObject.getClass() + " rather than " + theReferredClass);
 			String classNameTarget = theReferredClass.getName();
 			int splitPoint = classNameTarget.lastIndexOf('.');
@@ -72,10 +83,6 @@ public class SimilarityWithRefToFreshObject extends SimilarityWithRef {
 				double classNameDistance = PrefixDistance.calculateDistance(classNameTarget, classNameCandidate);
 				similarity += InverseDistances.inverseDistanceExp(classNameDistance, sameClassSimilarity);
 			}
-		}
-		else {
-			logger.debug(theReferenceOrigin + " refers to an object that matches " + theReferredClass);
-			similarity += sameClassSimilarity + samePackageSimilarity;
 		}
 			
 		logger.debug("Similarity increases by: " + similarity);

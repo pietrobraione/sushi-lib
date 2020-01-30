@@ -6,7 +6,6 @@ import static sushi.util.TypeUtils.javaPrimitiveType;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
@@ -52,21 +51,25 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
     private final long methodNumber;
     private final Supplier<Long> traceCounterSupplier;
     private final Supplier<State> initialStateSupplier;
+    private final boolean shallRelaxLastExpansionClause;
     private HashMap<Long, String> stringLiterals = null;
     private StringBuilder output = new StringBuilder();
     private int testCounter = 0;
 
     public StateFormatterSushiPathCondition(long methodNumber,
                                             Supplier<Long> traceCounterSupplier,
-                                            Supplier<State> initialStateSupplier) {
+                                            Supplier<State> initialStateSupplier, 
+                                            boolean shallRelaxLastExpansionClause) {
         this.methodNumber = methodNumber;
         this.traceCounterSupplier = traceCounterSupplier;
         this.initialStateSupplier = initialStateSupplier;
+        this.shallRelaxLastExpansionClause = shallRelaxLastExpansionClause;
     }
 
     public StateFormatterSushiPathCondition(int methodNumber,
-                                            Supplier<State> initialStateSupplier) {
-        this(methodNumber, null, initialStateSupplier);
+                                            Supplier<State> initialStateSupplier, 
+                                            boolean shallRelaxLastExpansionClause) {
+        this(methodNumber, null, initialStateSupplier, shallRelaxLastExpansionClause);
     }
 
     @Override
@@ -136,8 +139,8 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
     @Override
     public void formatState(State state) {
         try {
-            new MethodUnderTest(this.output, this.initialStateSupplier.get(), state, this.testCounter);
-            this.output.append("}\n");
+            new MethodUnderTest(this.output, this.initialStateSupplier.get(), state, this.testCounter, this.shallRelaxLastExpansionClause);
+            this.output.append("}\n"); //closes the class declaration
         } catch (FrozenStateException e) {
             this.output.delete(0, this.output.length());
         }
@@ -192,11 +195,11 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
         private final Calculator calc = new CalculatorRewriting(); //dummy
         private boolean panic = false;
 
-        MethodUnderTest(StringBuilder s, State initialState, State finalState, int testCounter) 
+        MethodUnderTest(StringBuilder s, State initialState, State finalState, int testCounter, boolean shallRelaxLastExpansionClause) 
         throws FrozenStateException {
             this.s = s;
             appendMethodDeclaration(initialState, finalState, testCounter);
-            appendPathCondition(finalState, testCounter);
+            appendPathCondition(finalState, testCounter, shallRelaxLastExpansionClause);
             appendCandidateObjects(finalState, testCounter);
             appendIfStatement(testCounter);
             appendMethodEnd(finalState, testCounter);
@@ -252,13 +255,13 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             this.s.append(") throws Exception {\n");
             this.s.append(INDENT_2);
             this.s.append("//generated for state ");
-            this.s.append(finalState.getIdentifier());
+            this.s.append(finalState.getBranchIdentifier());
             this.s.append('[');
             this.s.append(finalState.getSequenceNumber());
             this.s.append("]\n");
         }
 
-        private void appendPathCondition(State finalState, int testCounter) 
+        private void appendPathCondition(State finalState, int testCounter, boolean shallRelaxLastExpansionClause) 
         throws FrozenStateException {
             if (this.panic) {
                 return;
@@ -267,9 +270,11 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             this.s.append("final ArrayList<ClauseSimilarityHandler> pathConditionHandler = new ArrayList<>();\n");
             this.s.append(INDENT_2);
             this.s.append("ValueCalculator valueCalculator;\n");
-            final Collection<Clause> pathCondition = finalState.getPathCondition();
-            for (Iterator<Clause> iterator = pathCondition.iterator(); iterator.hasNext(); ) {
-                final Clause clause = iterator.next();
+            final List<Clause> pathCondition = finalState.getPathCondition();
+            final int pathConditionSize = pathCondition.size();
+            int currentClause = 0;
+            for (Clause clause : pathCondition) {
+                ++currentClause;
                 if (shouldSkip(clause)) {
                     continue;
                 }
@@ -281,7 +286,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                     final ClauseAssumeExpands clauseExpands = (ClauseAssumeExpands) clause;
                     final ReferenceSymbolic symbol = clauseExpands.getReference();
                     final long heapPosition = clauseExpands.getHeapPosition();
-                    setWithNewObject(finalState, symbol, heapPosition);
+                    setWithNewObject(finalState, symbol, heapPosition, (shallRelaxLastExpansionClause && currentClause == pathConditionSize));
                 } else if (clause instanceof ClauseAssumeNull) {
                     this.s.append(INDENT_2);
                     this.s.append("// "); //comment
@@ -361,7 +366,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 this.s.append("//Unable to generate test case ");
                 this.s.append(testCounter);
                 this.s.append(" for state ");
-                this.s.append(finalState.getIdentifier());
+                this.s.append(finalState.getBranchIdentifier());
                 this.s.append('[');
                 this.s.append(finalState.getSequenceNumber());
                 this.s.append("]\n");
@@ -371,15 +376,19 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             }
         }
 
-        private void setWithNewObject(State finalState, ReferenceSymbolic symbol, long heapPosition) 
+        private void setWithNewObject(State finalState, ReferenceSymbolic symbol, long heapPosition, boolean relax) 
         throws FrozenStateException {
             final String expansionClass = javaClass(getTypeOfObjectInHeap(finalState, heapPosition), false);
             this.s.append(INDENT_2);
             this.s.append("pathConditionHandler.add(new SimilarityWithRefToFreshObject(\"");
             this.s.append(symbol.asOriginString());
-            this.s.append("\", Class.forName(\"");
-            this.s.append(expansionClass); //TODO arrays
-            this.s.append("\")));\n");
+            if (relax) {
+                this.s.append("\"));\n");
+            } else {
+                this.s.append("\", Class.forName(\"");
+                this.s.append(expansionClass); //TODO arrays
+                this.s.append("\")));\n");
+            }
         }
 
         private void setWithNull(ReferenceSymbolic symbol) {
