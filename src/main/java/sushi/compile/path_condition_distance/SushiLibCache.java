@@ -6,7 +6,7 @@ import java.util.Map;
 public class SushiLibCache {
     private final Map<String, ParsedOrigin> parsedOrigins = new HashMap<>();
 
-    /* OThe following variables are used only for profiling purposes:
+    /* The following variables are used only for profiling purposes:
 	int attempts = 0;
 	int partialHits = 0;
 	int hits = 0;

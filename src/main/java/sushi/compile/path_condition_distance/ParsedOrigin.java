@@ -114,7 +114,6 @@ public class ParsedOrigin {
         return fields.toArray(new String[0]);
     }
 
-
     public Object get(Map<String, Object> candidateObjects, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache) 
     throws FieldDependsOnInvalidFieldPathException, FieldNotInCandidateException {
         //1. Check if any dependedOrigin is invalid, throw exception to abort
@@ -337,7 +336,7 @@ public class ParsedOrigin {
         final String className = fieldAndClassNameSplit[0];
         final Field f = ReflectionUtils.getInheritedPrivateField(obj.getClass(), fieldName, className);
         if (f == null) {
-            throw new SimilarityComputationException("Field with name " + fieldName + " that should be declared in class " + className + " does not exist in object with class " + obj.getClass().getName() + " and origin " + this.origin + ".");
+            throw new FieldNotInCandidateException(); // This can happen if the origin refers to a field of a sub-type
         }
         final OriginAccessorField accessor = new OriginAccessorField(f);
         final Object ret = accessor.getActualObject(obj);
