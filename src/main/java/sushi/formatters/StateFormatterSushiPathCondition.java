@@ -83,7 +83,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             //package declaration
             this.output.append("package ");
             final State initialState = this.initialStateSupplier.get();
-            final String initialCurrentClassName = initialState.getStack().get(0).getCurrentClass().getClassName();
+            final String initialCurrentClassName = initialState.getStack().get(0).getMethodClass().getClassName();
             final String initialCurrentClassPackageName = initialCurrentClassName.substring(0, initialCurrentClassName.lastIndexOf('/')).replace('/', '.');
             this.output.append(initialCurrentClassPackageName);
             this.output.append(";\n\n");
