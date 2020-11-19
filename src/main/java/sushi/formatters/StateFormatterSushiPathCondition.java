@@ -36,7 +36,6 @@ import jbse.val.PrimitiveSymbolicAtomic;
 import jbse.val.PrimitiveVisitor;
 import jbse.val.ReferenceSymbolic;
 import jbse.val.ReferenceSymbolicApply;
-import jbse.val.ReferenceSymbolicMemberField;
 import jbse.val.Simplex;
 import jbse.val.Symbolic;
 import jbse.val.Term;
@@ -332,8 +331,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 //exclude all the clauses with shape ClauseAssumeReferenceSymbolic
                 //if they refer to the resolution of the field initialMap of HashMap-models, since
                 //initialMap is an internal field of the models and does not exist in concrete hashMaps
-                if (ref instanceof ReferenceSymbolicMemberField && 
-                		"initialMap".equals(((ReferenceSymbolicMemberField) ref).getFieldName())) {
+                if (JAVA_MAP_Utils.isInitialMapField(ref)) {
                     return true;
                 }
             }
@@ -351,7 +349,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             for (String inputVariable : this.inputVariables) {
                 this.s.append(INDENT_2);
                 this.s.append("candidateObjects.put(\"");
-                this.s.append(getOriginStringString(getSymbolFor(inputVariable)));
+                this.s.append(getPossiblyAdaptedOriginString(getSymbolFor(inputVariable)));
                 this.s.append("\", ");
                 this.s.append(inputVariable);
                 this.s.append(");\n");
@@ -393,7 +391,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             final String expansionClass = javaClass(getTypeOfObjectInHeap(finalState, heapPosition), false);
             this.s.append(INDENT_2);
             this.s.append("pathConditionHandler.add(new SimilarityWithRefToFreshObject(\"");
-            this.s.append(getOriginStringString(symbol));
+            this.s.append(getPossiblyAdaptedOriginString(symbol));
             if (relax) {
                 this.s.append("\"));\n");
             } else {
@@ -406,7 +404,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
         private void setWithNull(ReferenceSymbolic symbol) {
             this.s.append(INDENT_2);
             this.s.append("pathConditionHandler.add(new SimilarityWithRefToNull(\"");
-            this.s.append(getOriginStringString(symbol));
+            this.s.append(getPossiblyAdaptedOriginString(symbol));
             this.s.append("\"));\n");
         }
 
@@ -414,7 +412,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             final String target = getOriginStringOfObjectInHeap(finalState, heapPosition);
             this.s.append(INDENT_2);
             this.s.append("pathConditionHandler.add(new SimilarityWithRefToAlias(\"");
-            this.s.append(getOriginStringString(symbol));
+            this.s.append(getPossiblyAdaptedOriginString(symbol));
             this.s.append("\", \"");
             this.s.append(target);
             this.s.append("\"));\n");
@@ -427,7 +425,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 
         private void makeVariableFor(Symbolic symbol) {
             if (!this.symbolsToVariables.containsKey(symbol)) {
-                final String origin = getOriginStringString(symbol);
+                final String origin = getPossiblyAdaptedOriginString(symbol);
                 final String varName = generateVarNameFromOrigin(origin);
                 this.symbolsToVariables.put(symbol, varName);
                 this.variablesToSymbols.put(varName, symbol);
@@ -455,7 +453,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                     final ClauseAssumeExpands clauseExpands = (ClauseAssumeExpands) clause;
                     final long heapPosCurrent = clauseExpands.getHeapPosition();
                     if (heapPosCurrent == heapPos) {
-                        return getOriginStringString(clauseExpands.getReference());
+                        return getPossiblyAdaptedOriginString(clauseExpands.getReference());
                     }
                 }
             }
@@ -473,7 +471,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             for (Symbolic symbol: symbols) {
                 this.s.append(INDENT_4);
                 this.s.append("retVal.add(\"");
-                this.s.append(getOriginStringString(symbol));
+                this.s.append(getPossiblyAdaptedOriginString(symbol));
                 this.s.append("\");\n");
             }
             this.s.append(INDENT_4);
@@ -508,7 +506,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             this.s.append("pathConditionHandler.add(new SimilarityWithNumericExpression(valueCalculator));\n");
         }
 
-        private String getOriginStringString(Symbolic symbol) {
+        private String getPossiblyAdaptedOriginString(Symbolic symbol) {
         	String origin = symbol.asOriginString();
         	origin = JAVA_MAP_Utils.possiblyAdaptMapModelSymbols(origin);
         	return origin;
