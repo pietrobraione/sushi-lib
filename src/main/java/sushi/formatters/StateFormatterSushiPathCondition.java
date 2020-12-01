@@ -12,6 +12,7 @@ import java.util.TreeSet;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import jbse.base.JAVA_MAP_Utils;
 import jbse.common.Type;
 import jbse.common.exc.UnexpectedInternalException;
 import jbse.mem.Clause;
@@ -318,12 +319,21 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
         }
 
         private boolean shouldSkip(Clause clause) {
-            //exclude all the clauses with shape ClauseAssumeReferenceSymbolic
-            //if they refer to the resolution of a symbolic reference that is a 
-            //function application
-            if (clause instanceof ClauseAssumeReferenceSymbolic && 
-            ((ClauseAssumeReferenceSymbolic) clause).getReference() instanceof ReferenceSymbolicApply) {
-                return true;
+            if (clause instanceof ClauseAssumeReferenceSymbolic) {
+            	ReferenceSymbolic ref = ((ClauseAssumeReferenceSymbolic) clause).getReference(); 
+                //exclude all the clauses with shape ClauseAssumeReferenceSymbolic
+                //if they refer to the resolution of a symbolic reference that is a 
+                //function application
+                if (ref instanceof ReferenceSymbolicApply) {
+                    return true;
+                }
+
+                //exclude all the clauses with shape ClauseAssumeReferenceSymbolic
+                //if they refer to the resolution of the field initialMap of HashMap-models, since
+                //initialMap is an internal field of the models and does not exist in concrete hashMaps
+                if (JAVA_MAP_Utils.isInitialMapField(ref)) {
+                    return true;
+                }
             }
 
             //all other clauses are accepted
@@ -339,7 +349,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             for (String inputVariable : this.inputVariables) {
                 this.s.append(INDENT_2);
                 this.s.append("candidateObjects.put(\"");
-                this.s.append(getSymbolFor(inputVariable).asOriginString());
+                this.s.append(getPossiblyAdaptedOriginString(getSymbolFor(inputVariable)));
                 this.s.append("\", ");
                 this.s.append(inputVariable);
                 this.s.append(");\n");
@@ -381,7 +391,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             final String expansionClass = javaClass(getTypeOfObjectInHeap(finalState, heapPosition), false);
             this.s.append(INDENT_2);
             this.s.append("pathConditionHandler.add(new SimilarityWithRefToFreshObject(\"");
-            this.s.append(symbol.asOriginString());
+            this.s.append(getPossiblyAdaptedOriginString(symbol));
             if (relax) {
                 this.s.append("\"));\n");
             } else {
@@ -394,7 +404,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
         private void setWithNull(ReferenceSymbolic symbol) {
             this.s.append(INDENT_2);
             this.s.append("pathConditionHandler.add(new SimilarityWithRefToNull(\"");
-            this.s.append(symbol.asOriginString());
+            this.s.append(getPossiblyAdaptedOriginString(symbol));
             this.s.append("\"));\n");
         }
 
@@ -402,7 +412,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             final String target = getOriginStringOfObjectInHeap(finalState, heapPosition);
             this.s.append(INDENT_2);
             this.s.append("pathConditionHandler.add(new SimilarityWithRefToAlias(\"");
-            this.s.append(symbol.asOriginString());
+            this.s.append(getPossiblyAdaptedOriginString(symbol));
             this.s.append("\", \"");
             this.s.append(target);
             this.s.append("\"));\n");
@@ -415,7 +425,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 
         private void makeVariableFor(Symbolic symbol) {
             if (!this.symbolsToVariables.containsKey(symbol)) {
-                final String origin = symbol.asOriginString();
+                final String origin = getPossiblyAdaptedOriginString(symbol);
                 final String varName = generateVarNameFromOrigin(origin);
                 this.symbolsToVariables.put(symbol, varName);
                 this.variablesToSymbols.put(varName, symbol);
@@ -443,7 +453,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                     final ClauseAssumeExpands clauseExpands = (ClauseAssumeExpands) clause;
                     final long heapPosCurrent = clauseExpands.getHeapPosition();
                     if (heapPosCurrent == heapPos) {
-                        return clauseExpands.getReference().asOriginString();
+                        return getPossiblyAdaptedOriginString(clauseExpands.getReference());
                     }
                 }
             }
@@ -461,7 +471,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             for (Symbolic symbol: symbols) {
                 this.s.append(INDENT_4);
                 this.s.append("retVal.add(\"");
-                this.s.append(symbol.asOriginString());
+                this.s.append(getPossiblyAdaptedOriginString(symbol));
                 this.s.append("\");\n");
             }
             this.s.append(INDENT_4);
@@ -496,7 +506,13 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             this.s.append("pathConditionHandler.add(new SimilarityWithNumericExpression(valueCalculator));\n");
         }
 
-        private List<Symbolic> symbolsInNumericAssumption(Primitive e) {
+        private String getPossiblyAdaptedOriginString(Symbolic symbol) {
+        	String origin = symbol.asOriginString();
+        	origin = JAVA_MAP_Utils.possiblyAdaptMapModelSymbols(origin);
+        	return origin;
+		}
+
+		private List<Symbolic> symbolsInNumericAssumption(Primitive e) {
             final ArrayList<Symbolic> symbols = new ArrayList<>();
             final PrimitiveVisitor v = new PrimitiveVisitor() {
 
