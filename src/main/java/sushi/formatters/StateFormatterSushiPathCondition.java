@@ -1,5 +1,7 @@
 package sushi.formatters;
 
+import static jbse.base.JAVA_MAP_Utils.isInitialMapField;
+import static jbse.base.JAVA_MAP_Utils.possiblyAdaptMapModelSymbols;
 import static sushi.util.TypeUtils.javaClass;
 import static sushi.util.TypeUtils.javaPrimitiveType;
 
@@ -12,7 +14,6 @@ import java.util.TreeSet;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import jbse.base.JAVA_MAP_Utils;
 import jbse.common.Type;
 import jbse.common.exc.UnexpectedInternalException;
 import jbse.mem.Clause;
@@ -320,7 +321,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 
         private boolean shouldSkip(Clause clause) {
             if (clause instanceof ClauseAssumeReferenceSymbolic) {
-            	ReferenceSymbolic ref = ((ClauseAssumeReferenceSymbolic) clause).getReference(); 
+            	final ReferenceSymbolic ref = ((ClauseAssumeReferenceSymbolic) clause).getReference(); 
                 //exclude all the clauses with shape ClauseAssumeReferenceSymbolic
                 //if they refer to the resolution of a symbolic reference that is a 
                 //function application
@@ -331,7 +332,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 //exclude all the clauses with shape ClauseAssumeReferenceSymbolic
                 //if they refer to the resolution of the field initialMap of HashMap-models, since
                 //initialMap is an internal field of the models and does not exist in concrete hashMaps
-                if (JAVA_MAP_Utils.isInitialMapField(ref)) {
+                if (isInitialMapField(ref)) {
                     return true;
                 }
             }
@@ -507,12 +508,11 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
         }
 
         private String getPossiblyAdaptedOriginString(Symbolic symbol) {
-        	String origin = symbol.asOriginString();
-        	origin = JAVA_MAP_Utils.possiblyAdaptMapModelSymbols(origin);
-        	return origin;
-		}
+            final String retVal = possiblyAdaptMapModelSymbols(symbol.asOriginString());
+            return retVal;
+        }
 
-		private List<Symbolic> symbolsInNumericAssumption(Primitive e) {
+        private List<Symbolic> symbolsInNumericAssumption(Primitive e) {
             final ArrayList<Symbolic> symbols = new ArrayList<>();
             final PrimitiveVisitor v = new PrimitiveVisitor() {
 
