@@ -1,14 +1,10 @@
 plugins {
     id 'java'
-    id 'maven'
     id 'eclipse'
 }
 
 repositories {
-    mavenLocal()
-    maven {
-        url = 'http://repo.maven.apache.org/maven2'
-    }
+    mavenCentral()
 }
 
 dependencies {
@@ -19,7 +15,12 @@ dependencies {
 
 group = 'sushi'
 version = '0.2.0-SNAPSHOT'
-sourceCompatibility = '1.8'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+}
 
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
