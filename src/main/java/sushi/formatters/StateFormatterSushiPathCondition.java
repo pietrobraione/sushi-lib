@@ -1,7 +1,7 @@
 package sushi.formatters;
 
-import static jbse.base.JAVA_MAP_Utils.isInitialMapField;
-import static jbse.base.JAVA_MAP_Utils.possiblyAdaptMapModelSymbols;
+import static jbse.apps.run.JAVA_MAP_Utils.isInitialMapField;
+import static jbse.apps.run.JAVA_MAP_Utils.possiblyAdaptMapModelSymbols;
 import static sushi.util.TypeUtils.javaClass;
 import static sushi.util.TypeUtils.javaPrimitiveType;
 
