@@ -25,16 +25,21 @@ public class CandidateBackbone {
 		return this.classLoader;
 	}
 	
-	public static CandidateBackbone _I(ClassLoader classLoader) {
-		if (!reuseBackbone || _I == null) {
+	public static CandidateBackbone makeNewBackbone(ClassLoader classLoader) {
+		if (!reuseBackbone) {
+			return new CandidateBackbone(classLoader);
+		}
+		if(_I == null) {
 			_I = new CandidateBackbone(classLoader);
+		} else {
+			_I.invalidFieldPaths.clear(); /* the information on the invalid field paths is specific for each path condition and shall not be reused across path conditions */
 		}
 		return _I;
 	}
 	
 	public static void resetAndReuseUntilReset() {
 		reuseBackbone = true;
-		_I = null;
+		_I = null; // resetting the backbone
 	}
 
 	private void storeInBackbone(Object obj, String origin) {
