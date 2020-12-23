@@ -133,14 +133,6 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 this.output.append("\";\n");
             }
 
-            //nonconstant declarations
-            for (long oth : this.stringOthers) {
-                this.output.append(INDENT_1);
-                this.output.append("private static String NCONST_");
-                this.output.append(oth);
-                this.output.append(";\n");
-            }
-            
             //private members and constructor declaration
             this.output.append(PROLOGUE_3);
             this.output.append('_');
