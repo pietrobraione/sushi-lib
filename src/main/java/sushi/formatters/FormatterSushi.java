@@ -1,6 +1,7 @@
 package sushi.formatters;
 
 import java.util.Map;
+import java.util.Set;
 
 import jbse.apps.Formatter;
 
@@ -10,5 +11,6 @@ import jbse.apps.Formatter;
  * @author Pietro Braione
  */
 public interface FormatterSushi extends Formatter {
-	void setConstants(Map<Long, String> stringLiterals);
+	void setStringsConstant(Map<Long, String> stringLiterals);
+        void setStringsNonconstant(Set<Long> stringOthers);
 }

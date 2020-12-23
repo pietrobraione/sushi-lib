@@ -2,26 +2,37 @@ package sushi.formatters;
 
 import static jbse.apps.run.JAVA_MAP_Utils.isInitialMapField;
 import static jbse.apps.run.JAVA_MAP_Utils.possiblyAdaptMapModelSymbols;
+import static jbse.bc.Signatures.JAVA_STRING_VALUE;
+import static jbse.common.Type.CHAR;
+import static jbse.common.Type.toPrimitiveOrVoidCanonicalName;
 import static sushi.util.TypeUtils.javaClass;
 import static sushi.util.TypeUtils.javaPrimitiveType;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import jbse.common.Type;
 import jbse.common.exc.UnexpectedInternalException;
+import jbse.mem.Array;
+import jbse.mem.Array.AccessOutcomeIn;
+import jbse.mem.Array.AccessOutcomeInInitialArray;
+import jbse.mem.Array.AccessOutcomeInValue;
 import jbse.mem.Clause;
 import jbse.mem.ClauseAssume;
 import jbse.mem.ClauseAssumeAliases;
 import jbse.mem.ClauseAssumeExpands;
 import jbse.mem.ClauseAssumeNull;
 import jbse.mem.ClauseAssumeReferenceSymbolic;
+import jbse.mem.Instance;
 import jbse.mem.Objekt;
 import jbse.mem.State;
 import jbse.mem.exc.FrozenStateException;
@@ -35,6 +46,8 @@ import jbse.val.Primitive;
 import jbse.val.PrimitiveSymbolicApply;
 import jbse.val.PrimitiveSymbolicAtomic;
 import jbse.val.PrimitiveVisitor;
+import jbse.val.Reference;
+import jbse.val.ReferenceConcrete;
 import jbse.val.ReferenceSymbolic;
 import jbse.val.ReferenceSymbolicApply;
 import jbse.val.Simplex;
@@ -42,6 +55,8 @@ import jbse.val.Symbolic;
 import jbse.val.Term;
 import jbse.val.Value;
 import jbse.val.WideningConversion;
+import jbse.val.exc.InvalidOperandException;
+import jbse.val.exc.InvalidTypeException;
 
 /**
  * A {@link Formatter} used by SUSHI (check of path condition
@@ -55,6 +70,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
     private final Supplier<State> initialStateSupplier;
     private final boolean shallRelaxLastExpansionClause;
     private HashMap<Long, String> stringLiterals = null;
+    private TreeSet<Long> stringOthers = null;
     private StringBuilder output = new StringBuilder();
     private int testCounter = 0;
 
@@ -75,8 +91,13 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
     }
 
     @Override
-    public void setConstants(Map<Long, String> stringLiterals) {
+    public void setStringsConstant(Map<Long, String> stringLiterals) {
         this.stringLiterals = new HashMap<>(stringLiterals); //safety copy
+    }
+    
+    @Override
+    public void setStringsNonconstant(Set<Long> stringOthers) {
+        this.stringOthers = new TreeSet<>(stringOthers); //safety copy
     }
 
     @Override
@@ -111,6 +132,14 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 this.output.append(lit.getValue());
                 this.output.append("\";\n");
             }
+
+            //nonconstant declarations
+            for (long oth : this.stringOthers) {
+                this.output.append(INDENT_1);
+                this.output.append("private static String NCONST_");
+                this.output.append(oth);
+                this.output.append(";\n");
+            }
             
             //private members and constructor declaration
             this.output.append(PROLOGUE_3);
@@ -123,9 +152,9 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             this.output.append("(ClassLoader classLoader) {\n");
             this.output.append(INDENT_2);
             this.output.append("this.classLoader = classLoader;\n");
-            for (long heapPos : new TreeSet<Long>(stringLiterals.keySet())) {
+            for (long heapPos : new TreeSet<Long>(this.stringLiterals.keySet())) {
                 this.output.append(INDENT_2);
-                this.output.append("this.constants.put(");
+                this.output.append("this.finalHeap.put(");
                 this.output.append(heapPos);
                 this.output.append("L, CONST_");
                 this.output.append(heapPos);
@@ -141,7 +170,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
     @Override
     public void formatState(State state) {
         try {
-            new MethodUnderTest(this.output, this.initialStateSupplier.get(), state, this.testCounter, this.shallRelaxLastExpansionClause);
+            new MethodUnderTest(this.output, this.initialStateSupplier.get(), state, this.testCounter, this.stringOthers, this.shallRelaxLastExpansionClause);
             this.output.append("}\n"); //closes the class declaration
         } catch (FrozenStateException e) {
             this.output.delete(0, this.output.length());
@@ -164,7 +193,10 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
     private static final String INDENT_2 = INDENT_1 + INDENT_1;
     private static final String INDENT_3 = INDENT_1 + INDENT_2;
     private static final String INDENT_4 = INDENT_1 + INDENT_3;
+    private static final String INDENT_5 = INDENT_1 + INDENT_4;
+    private static final String INDENT_6 = INDENT_1 + INDENT_5;
     private static final String PROLOGUE_1 =
+    "import static " + sushi.compile.path_condition_distance.DistanceBySimilarityWithPathCondition.class.getName() + ".completeFinalHeap;\n" +
     "import static " + sushi.compile.path_condition_distance.DistanceBySimilarityWithPathCondition.class.getName() + ".distance;\n" +
     "\n" +
     "import static java.lang.Double.*;\n" +
@@ -184,7 +216,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
     INDENT_1 + "private static final double BIG_DISTANCE = 1E300;\n" +
     "\n";
     private static final String PROLOGUE_3 = "\n" +
-    INDENT_1 + "private final HashMap<Long, String> constants = new HashMap<>();\n" +
+    INDENT_1 + "private final HashMap<Long, String> finalHeap = new HashMap<>();\n" +
     INDENT_1 + "private final ClassLoader classLoader;\n" +
     INDENT_1 + "private final SushiLibCache cache = new SushiLibCache();\n\n" +
     INDENT_1 + "public EvoSuiteWrapper";
@@ -197,12 +229,14 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
         private final Calculator calc = new CalculatorRewriting(); //dummy
         private boolean panic = false;
 
-        MethodUnderTest(StringBuilder s, State initialState, State finalState, int testCounter, boolean shallRelaxLastExpansionClause) 
+        MethodUnderTest(StringBuilder s, State initialState, State finalState, int testCounter, Set<Long> stringsOther, boolean shallRelaxLastExpansionClause) 
         throws FrozenStateException {
             this.s = s;
             appendMethodDeclaration(initialState, finalState, testCounter);
+            appendStringsNonconstant(finalState, stringsOther);
             appendPathCondition(finalState, testCounter, shallRelaxLastExpansionClause);
             appendCandidateObjects(finalState, testCounter);
+            appendFinalHeapCompletionStatement();
             appendIfStatement(testCounter);
             appendMethodEnd(finalState, testCounter);
         }
@@ -262,7 +296,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             this.s.append(finalState.getSequenceNumber());
             this.s.append("]\n");
         }
-
+        
         private void appendPathCondition(State finalState, int testCounter, boolean shallRelaxLastExpansionClause) 
         throws FrozenStateException {
             if (this.panic) {
@@ -355,11 +389,285 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 this.s.append(inputVariable);
                 this.s.append(");\n");
             }			
+            this.s.append("\n");
+        }
+
+        private void appendStringsNonconstant(State finalState, Set<Long> stringsOther) throws FrozenStateException {
+            if (this.panic) {
+                return;
+            }
+            this.s.append(INDENT_2);
+            this.s.append("final HashMap<Long, StringCalculator> stringCalculators = new HashMap<>();\n");
+            for (long heapPosition : stringsOther) {
+                final ReferenceConcrete refString = new ReferenceConcrete(heapPosition);
+                final Instance instanceString = (Instance) finalState.getObject(refString);
+                final Reference refValue = (Reference) instanceString.getFieldValue(JAVA_STRING_VALUE);
+                final Array arrayValue = (Array) finalState.getObject(refValue);
+                if (arrayValue != null) {
+                    final List<Symbolic> symbols = symbolsInArrayOfChars(finalState, arrayValue);
+                    this.s.append(INDENT_2);
+                    this.s.append("stringCalculators.put(");
+                    this.s.append(heapPosition);
+                    this.s.append("L, new StringCalculator() {\n");
+                    this.s.append(INDENT_3);
+                    this.s.append("@Override public Iterable<String> getVariableOrigins() {\n");
+                    this.s.append(INDENT_4);
+                    this.s.append("ArrayList<String> retVal = new ArrayList<>();\n");       
+                    for (Symbolic symbol: symbols) {
+                        this.s.append(INDENT_4);
+                        this.s.append("retVal.add(\"");
+                        this.s.append(getPossiblyAdaptedOriginString(symbol));
+                        this.s.append("\");\n");
+                    }
+                    this.s.append(INDENT_4);
+                    this.s.append("return retVal;\n");       
+                    this.s.append(INDENT_3);
+                    this.s.append("}\n");
+                    
+                    //**//**//**
+                    this.s.append(INDENT_3);
+                    this.s.append("@Override public String getString(List<Object> variables) {\n");
+                    for (int i = 0; i < symbols.size(); ++i) {
+                        final Symbolic symbol = symbols.get(i);
+                        makeVariableFor(symbol);
+                        this.s.append(INDENT_4);
+                        this.s.append("final ");
+                        this.s.append(javaType(symbol));
+                        this.s.append(" ");
+                        this.s.append(getVariableFor(symbol));
+                        this.s.append(" = (");
+                        this.s.append(javaType(symbol));
+                        this.s.append(") variables.get(");
+                        this.s.append(i);
+                        this.s.append(");\n");
+                    }
+                    this.s.append("\n");
+                    final Evaluator evaluator = new Evaluator(arrayValue.getIndex());
+                    final String arrayLength = evaluator.eval(arrayValue.getLength());
+                    this.s.append(INDENT_4);
+                    this.s.append("final char[] array_");
+                    this.s.append(heapPosition);
+                    this.s.append(" = new char[");
+                    this.s.append(arrayLength);
+                    this.s.append("];\n");
+                    this.s.append(INDENT_4);
+                    this.s.append("for (int i = 0; i < ");
+                    this.s.append(arrayLength);
+                    this.s.append("; ++i) {\n");
+                    boolean firstDone = false;
+                    for (Iterator<? extends AccessOutcomeIn> it = arrayValue.entries(); it.hasNext(); ) {
+                        this.s.append(INDENT_5);
+                        if (firstDone) {
+                            this.s.append("} else ");
+                        } else {
+                            firstDone = true;
+                        }
+                        this.s.append("if (");
+                        final AccessOutcomeIn entry = it.next();
+                        this.s.append(evaluator.eval(entry.getAccessCondition()));
+                        this.s.append(") {\n");
+                        this.s.append(INDENT_6);
+                        this.s.append("array_");
+                        this.s.append(heapPosition);
+                        this.s.append("[i] = ");
+                        if (entry instanceof AccessOutcomeInValue) {
+                            final Primitive entryValue = (Primitive) ((AccessOutcomeInValue) entry).getValue();
+                            final Primitive charValue;
+                            try {
+                                charValue = this.calc.push(entryValue).to(CHAR).pop();
+                            } catch (NoSuchElementException | InvalidTypeException | InvalidOperandException e) {
+                                //this should never happen
+                                throw new UnexpectedInternalException(e);
+                            }
+                            this.s.append(evaluator.eval(charValue));
+                        } else {
+                            final AccessOutcomeInInitialArray entryInitialArray = ((AccessOutcomeInInitialArray) entry);
+                            final Array arrayInitial = (Array) finalState.getObject(entryInitialArray.getInitialArray());
+                            this.s.append(getVariableFor(arrayInitial.getOrigin()));
+                            this.s.append("[i + (");
+                            this.s.append(evaluator.eval(entryInitialArray.getOffset()));
+                            this.s.append(")]");
+                        }
+                        this.s.append(";\n");
+                    }
+                    this.s.append(INDENT_5);
+                    this.s.append("}\n");
+                    this.s.append(INDENT_4);
+                    this.s.append("}\n");
+                    this.s.append(INDENT_4);
+                    this.s.append("return new String(array_");
+                    this.s.append(heapPosition);
+                    this.s.append(");\n");
+                    this.s.append(INDENT_3);
+                    this.s.append("}\n");
+                    this.s.append(INDENT_2);
+                    this.s.append("});\n");                    
+                }
+            }
+            this.s.append("\n");
+        }
+
+        private List<Symbolic> symbolsInArrayOfChars(State finalState, Array a) {
+            final ArrayList<Symbolic> symbols = new ArrayList<>();
+            final PrimitiveVisitor v = new PrimitiveVisitor() {
+
+                @Override
+                public void visitAny(Any x) { }
+
+                @Override
+                public void visitExpression(Expression e) throws Exception { 
+                    if (e.isUnary()) {
+                        e.getOperand().accept(this);
+                    } else {
+                        e.getFirstOperand().accept(this);
+                        e.getSecondOperand().accept(this);
+                    }
+                }
+
+                @Override
+                public void visitPrimitiveSymbolicApply(PrimitiveSymbolicApply x) throws Exception {
+                    if (symbols.contains(x)) {
+                        return; //surely its args have been processed
+                    }
+                    symbols.add(x);
+                }
+
+                @Override
+                public void visitPrimitiveSymbolicAtomic(PrimitiveSymbolicAtomic s) throws Exception {
+                    if (symbols.contains(s)) {
+                        return;
+                    }
+                    symbols.add(s);
+                }
+
+                @Override
+                public void visitSimplex(Simplex x) throws Exception { }
+
+                @Override
+                public void visitTerm(Term x) throws Exception { }
+
+                @Override
+                public void visitNarrowingConversion(NarrowingConversion x) throws Exception {
+                    x.getArg().accept(this);
+                }
+
+                @Override
+                public void visitWideningConversion(WideningConversion x) throws Exception {
+                    x.getArg().accept(this);
+                }
+            };
+            
+            try {
+                a.getLength().accept(v);
+                for (Iterator<? extends AccessOutcomeIn> it = a.entries(); it.hasNext(); ) {
+                    final AccessOutcomeIn entry = it.next();
+                    entry.getAccessCondition().accept(v);
+                    if (entry instanceof AccessOutcomeInValue) {
+                        //it is an array of characters, so the value is primitive
+                        ((Primitive) ((AccessOutcomeInValue) entry).getValue()).accept(v);
+                    } else {
+                        final AccessOutcomeInInitialArray entryInitialArray = (AccessOutcomeInInitialArray) entry;
+                        entryInitialArray.getOffset().accept(v);
+                        final ReferenceSymbolic initialArrayOrigin = ((Array) finalState.getObject(entryInitialArray.getInitialArray())).getOrigin();
+                        symbols.add(initialArrayOrigin);
+                    }
+                }
+            } catch (Exception exc) {
+                //this should never happen
+                throw new AssertionError(exc);
+            }
+            return symbols;
+        }
+
+        
+        private final class Evaluator implements PrimitiveVisitor {
+            private final Term arrayIndex;
+            private String result = null;
+            
+            Evaluator(Term arrayIndex) {
+                this.arrayIndex = arrayIndex;
+            }
+            
+            public String eval(Primitive p) {
+                try {
+                    p.accept(this);
+                } catch (RuntimeException e) {
+                    throw e;
+                } catch (Exception e) {
+                    //never happens
+                    throw new AssertionError(e);
+                }
+                return this.result;
+            }
+
+            @Override
+            public void visitAny(Any x) throws Exception {
+                this.result = "";
+            }
+
+            @Override
+            public void visitExpression(Expression e) throws Exception {
+                if (e.isUnary()) {
+                    e.getOperand().accept(this);
+                    final String operand = this.result;
+                    this.result = "(" + e.getOperator() + " " + operand + ")";
+                } else {
+                    e.getFirstOperand().accept(this);
+                    final String operandFirst = this.result;
+                    e.getSecondOperand().accept(this);
+                    final String operandSecond = this.result;
+                    this.result = "(" + operandFirst + " " + e.getOperator() + " " + operandSecond + ")";
+                }
+            }
+
+            @Override
+            public void visitPrimitiveSymbolicApply(PrimitiveSymbolicApply x) throws Exception {
+                this.result = ""; //currently unsupported
+                
+            }
+
+            @Override
+            public void visitPrimitiveSymbolicAtomic(PrimitiveSymbolicAtomic s) throws Exception {
+                this.result = getVariableFor(s);
+                
+            }
+
+            @Override
+            public void visitSimplex(Simplex x) throws Exception {
+                this.result = x.toString();
+            }
+
+            @Override
+            public void visitTerm(Term x) throws Exception {
+                if (x == this.arrayIndex) {
+                    this.result = "i";
+                } else {
+                    this.result = "";
+                }
+            }
+
+            @Override
+            public void visitNarrowingConversion(NarrowingConversion x) throws Exception {
+                x.getArg().accept(this);
+                final String arg = this.result;
+                this.result = "((" + toPrimitiveOrVoidCanonicalName(x.getType()) + ") " + arg;
+            }
+
+            @Override
+            public void visitWideningConversion(WideningConversion x) throws Exception {
+                x.getArg().accept(this);
+            }            
+        }
+        
+        private void appendFinalHeapCompletionStatement() {
+            this.s.append(INDENT_2);
+            this.s.append("completeFinalHeap(stringCalculators, candidateObjects, this.finalHeap, this.classLoader, this.cache);\n");
+            this.s.append("\n");
         }
 
         private void appendIfStatement(int testCounter) {
             this.s.append(INDENT_2);
-            this.s.append("double d = distance(pathConditionHandler, candidateObjects, this.constants, this.classLoader, this.cache);\n");
+            this.s.append("double d = distance(pathConditionHandler, candidateObjects, this.finalHeap, this.classLoader, this.cache);\n");
             this.s.append(INDENT_2);
             this.s.append("if (d == 0.0d)\n");
             this.s.append(INDENT_3);

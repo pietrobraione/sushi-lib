@@ -75,8 +75,13 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
     }
 
     @Override
-    public void setConstants(Map<Long, String> stringLiterals) {
+    public void setStringsConstant(Map<Long, String> stringLiterals) {
         this.stringLiterals = new HashMap<>(stringLiterals); //safety copy
+    }
+    
+    @Override
+    public void setStringsNonconstant(Set<Long> stringOthers) {
+        // TODO    
     }
 
     @Override
