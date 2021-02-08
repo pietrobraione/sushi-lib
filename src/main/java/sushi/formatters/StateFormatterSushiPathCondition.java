@@ -20,6 +20,7 @@ import java.util.TreeSet;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import jbse.bc.ClassHierarchy;
 import jbse.common.Type;
 import jbse.common.exc.UnexpectedInternalException;
 import jbse.mem.Array;
@@ -301,9 +302,10 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             final List<Clause> pathCondition = finalState.getPathCondition();
             final int pathConditionSize = pathCondition.size();
             int currentClause = 0;
+            final ClassHierarchy hier = finalState.getClassHierarchy();
             for (Clause clause : pathCondition) {
                 ++currentClause;
-                if (shouldSkip(clause)) {
+                if (shouldSkip(hier, clause)) {
                     continue;
                 }
                 if (clause instanceof ClauseAssumeExpands) {
@@ -345,7 +347,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             this.s.append("\n");
         }
 
-        private boolean shouldSkip(Clause clause) {
+        private boolean shouldSkip(ClassHierarchy hier, Clause clause) {
             if (clause instanceof ClauseAssumeReferenceSymbolic) {
             	final ReferenceSymbolic ref = ((ClauseAssumeReferenceSymbolic) clause).getReference(); 
                 //exclude all the clauses with shape ClauseAssumeReferenceSymbolic
@@ -358,7 +360,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 //exclude all the clauses with shape ClauseAssumeReferenceSymbolic
                 //if they refer to the resolution of the field initialMap of HashMap-models, since
                 //initialMap is an internal field of the models and does not exist in concrete hashMaps
-                if (isInitialMapField(ref)) {
+                if (isInitialMapField(hier, ref)) {
                     return true;
                 }
             }
