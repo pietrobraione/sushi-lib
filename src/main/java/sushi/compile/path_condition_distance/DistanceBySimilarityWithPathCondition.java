@@ -56,6 +56,8 @@ public class DistanceBySimilarityWithPathCondition {
                 logger.debug("Added heap object (String) for position: " + heapPosition);
             } catch (FieldNotInCandidateException e) {
                     logger.debug("Field " + theVariableOrigin + " does not yet exist in candidate");                        
+            } catch (ObjectNotInCandidateException e) {
+                    logger.debug("Field " + theVariableOrigin + " refers concrete objects in candidate that could not be stored (currently only concrete strings are stored)");                        
             } catch (FieldDependsOnInvalidFieldPathException e) {
                     logger.debug("Field " + theVariableOrigin + " depends on field path that did not converge yet: " + e.getMessage());                     
             }

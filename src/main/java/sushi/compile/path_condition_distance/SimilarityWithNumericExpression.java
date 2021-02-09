@@ -35,6 +35,8 @@ public class SimilarityWithNumericExpression implements ClauseSimilarityHandler 
 			similarity += inverseDistanceRatio(this.theValueCalculator.calculate(variables), 1.0d);
 		} catch (FieldNotInCandidateException e) {
 			logger.debug("Field " + theVariableOrigin + " does not yet exist in candidate");			
+		} catch (ObjectNotInCandidateException e) {
+		        logger.debug("Field " + theVariableOrigin + " refers concrete objects in candidate that could not be stored (currently only concrete strings are stored)");                        
 		} catch (FieldDependsOnInvalidFieldPathException e) {
 			logger.debug("Field " + theVariableOrigin + " depends on field path that did not converge yet: " + e.getMessage());			
 		}

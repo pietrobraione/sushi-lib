@@ -1,7 +1,5 @@
 package sushi.compile.path_condition_distance;
 
-import java.util.Map;
-
 import sushi.logging.Logger;
 
 public class SimilarityWithRefNotAlias extends SimilarityWithRef {
