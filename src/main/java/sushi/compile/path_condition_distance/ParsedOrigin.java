@@ -426,7 +426,7 @@ public class ParsedOrigin {
                     return this.method.invoke(objParameters[0], Arrays.copyOfRange(objParameters, 1, objParameters.length));
                 }
             } catch (InvocationTargetException e) {
-                throw new ObjectNotInCandidateException("Method " + method + " did not return a result because it raised an exception: " + e.getCause().toString());
+                throw new ObjectNotInCandidateException("Method " + method + " did not return a result because it raised an exception: " + e.getCause().toString() + "; parameters: " + Arrays.toString(objParameters));
             } catch (IllegalAccessException | IllegalArgumentException e) {
                 throw new SimilarityComputationException("Unexpected reflective exception while invoking method " + method + "; exception: " + e.toString());
             }
