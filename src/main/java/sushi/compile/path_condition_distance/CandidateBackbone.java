@@ -101,7 +101,7 @@ public class CandidateBackbone {
 	}
 
 	public Object retrieveOrVisitField(String origin, Map<String, Object> candidateObjects, Map<Long, String> constants, SushiLibCache cache) 
-	throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
+	throws FieldNotInCandidateException, ObjectNotInCandidateException, FieldDependsOnInvalidFieldPathException {
 		assert (origin != null); 
 		
 		if (cache == null) {

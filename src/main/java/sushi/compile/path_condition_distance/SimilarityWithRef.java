@@ -28,10 +28,13 @@ public abstract class SimilarityWithRef implements ClauseSimilarityHandler {
 				backbone.addInvalidFieldPath(this.theReferenceOrigin);
 			}			
 		} catch (FieldNotInCandidateException e) {
-			logger.debug("Field " + theReferenceOrigin + " does not yet exist in candidate");			
+			logger.debug("Field " + this.theReferenceOrigin + " does not yet exist in candidate");			
 			backbone.addInvalidFieldPath(this.theReferenceOrigin);
+		} catch (ObjectNotInCandidateException e) {
+		        logger.debug("Field " + this.theReferenceOrigin + " refers concrete objects in candidate that could not be stored (currently only concrete strings are stored)");                        
+                        backbone.addInvalidFieldPath(this.theReferenceOrigin);
 		} catch (FieldDependsOnInvalidFieldPathException e) {
-			logger.debug("Field " + theReferenceOrigin + " depends on field path that did not converge yet: " + e.getMessage());			
+			logger.debug("Field " + this.theReferenceOrigin + " depends on field path that did not converge yet: " + e.getMessage());			
 		}
 		return similarity;
 	}

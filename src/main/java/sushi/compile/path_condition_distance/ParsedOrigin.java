@@ -115,7 +115,7 @@ public class ParsedOrigin {
     }
 
     public Object get(Map<String, Object> candidateObjects, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache) 
-    throws FieldDependsOnInvalidFieldPathException, FieldNotInCandidateException {
+    throws FieldDependsOnInvalidFieldPathException, FieldNotInCandidateException, ObjectNotInCandidateException {
         //1. Check if any dependedOrigin is invalid, throw exception to abort
         final Set<String> smallerSet;
         final Set<String> biggerSet;
@@ -205,7 +205,7 @@ public class ParsedOrigin {
             this.originAccessSpecifier[0] = accessor;
             return ret;
         } catch (NoSuchFieldException | SecurityException | ClassNotFoundException e) {
-            throw new SimilarityComputationException("Reflective exception while accessing static field " + className + "." + fieldName + ". Exception: " + e );
+            throw new SimilarityComputationException("Unexpected reflective exception while accessing static field " + className + "." + fieldName + ". Exception: " + e );
         }
 
     }
@@ -223,7 +223,7 @@ public class ParsedOrigin {
     }
 
     private Object parseAccessorMethodInvocation(Map<String, Object> candidateObjects, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache) 
-    throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
+    throws FieldNotInCandidateException, ObjectNotInCandidateException, FieldDependsOnInvalidFieldPathException {
         //gets the position of the first semicolon
         final int firstSemicolonIndex = this.fields[0].indexOf(':');
         if (firstSemicolonIndex == -1) {
@@ -291,7 +291,7 @@ public class ParsedOrigin {
             this.originAccessSpecifier[0] = accessor;
             return ret;
         } catch (NoSuchMethodException | ClassNotFoundException | SecurityException e) {
-            throw new SimilarityComputationException("Reflective exception while invoking method " + methodClassName + ":" + methodDescriptor + ":" + methodName + ". Exception: " + e.toString());
+            throw new SimilarityComputationException("Unexpected reflective exception while getting method " + methodClassName + ":" + methodDescriptor + ":" + methodName + ". Exception: " + e.toString());
         } 		
     }
 
@@ -303,7 +303,7 @@ public class ParsedOrigin {
     }
 
     private Object parseAccessorArrayLocation(Object obj, Map<String, Object> candidateObjects, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache) 
-    throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
+    throws FieldNotInCandidateException, ObjectNotInCandidateException, FieldDependsOnInvalidFieldPathException {
         final String arrayAccessor = this.fields[this.nextUnparsed];
         if (arrayAccessor.equals("length")) {
             final OriginAccessorArrayLength accessor = new OriginAccessorArrayLength();
@@ -346,7 +346,7 @@ public class ParsedOrigin {
 
     private abstract class OriginAccessor {
         abstract Object getActualObject(Map<String, Object> candidateObjects, Object obj, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache) 
-        throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException;
+        throws FieldNotInCandidateException, ObjectNotInCandidateException, FieldDependsOnInvalidFieldPathException;
     }
 
     private class OriginAccessorStaticField extends OriginAccessor {
@@ -401,11 +401,12 @@ public class ParsedOrigin {
 
         @Override
         Object getActualObject(Map<String, Object> candidateObjects, Object obj, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache)
-        throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
+        throws FieldNotInCandidateException, ObjectNotInCandidateException, FieldDependsOnInvalidFieldPathException {
             return getActualObject(candidateObjects, candidateBackbone, constants, cache);
         }
 
-        Object getActualObject(Map<String, Object> candidateObjects, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache) throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
+        Object getActualObject(Map<String, Object> candidateObjects, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache) 
+        throws FieldNotInCandidateException, ObjectNotInCandidateException, FieldDependsOnInvalidFieldPathException {
             //gets the parameters in the list
             final Object[] objParameters = new Object[this.parametersList.size()];
             for (int i = 0; i < this.parametersList.size(); ++i) {
@@ -424,8 +425,10 @@ public class ParsedOrigin {
                 } else {
                     return this.method.invoke(objParameters[0], Arrays.copyOfRange(objParameters, 1, objParameters.length));
                 }
-            } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-                throw new SimilarityComputationException("Reflective exception while invoking method " + method + "; exception: " + e.toString());
+            } catch (InvocationTargetException e) {
+                throw new ObjectNotInCandidateException("Method " + method + " did not return a result because it raised an exception: " + e.getCause().toString());
+            } catch (IllegalAccessException | IllegalArgumentException e) {
+                throw new SimilarityComputationException("Unexpected reflective exception while invoking method " + method + "; exception: " + e.toString());
             }
         }
     }
@@ -538,7 +541,8 @@ public class ParsedOrigin {
         }
 
         @Override
-        Object getActualObject(Map<String, Object> candidateObjects, Object obj, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache) throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
+        Object getActualObject(Map<String, Object> candidateObjects, Object obj, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache) 
+        throws FieldNotInCandidateException, ObjectNotInCandidateException, FieldDependsOnInvalidFieldPathException {
             if (obj == null) {
                 throw new FieldNotInCandidateException();
             }	
@@ -546,7 +550,7 @@ public class ParsedOrigin {
         }	
 
         private Object retrieveFromArray(Object obj, CandidateBackbone candidateBackbone, Map<String, Object> candidateObjects, Map<Long, String> constants, SushiLibCache cache) 
-        throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException {
+        throws FieldNotInCandidateException, ObjectNotInCandidateException, FieldDependsOnInvalidFieldPathException {
             final Object value = eval(this.indexString, candidateObjects, candidateBackbone, constants, cache);
             if (value instanceof Integer) {
                 try {
@@ -575,7 +579,7 @@ public class ParsedOrigin {
     private static final String NEG   = "~";
 
     private Object eval(String valueString, Map<String, Object> candidateObjects, CandidateBackbone candidateBackbone, Map<Long, String> constants, SushiLibCache cache) 
-    throws FieldNotInCandidateException, FieldDependsOnInvalidFieldPathException, SimilarityComputationException {
+    throws FieldNotInCandidateException, ObjectNotInCandidateException, FieldDependsOnInvalidFieldPathException, SimilarityComputationException {
         if (valueString == null) {
             throw new SimilarityComputationException("Trying to eval a null String.");
         }
@@ -704,7 +708,7 @@ public class ParsedOrigin {
                 if (constants.containsKey(heapPos)) {
                     return constants.get(heapPos);
                 } else {
-                    throw new SimilarityComputationException("Found ReferenceConcrete value: " + valueString + ", not corresponding to any literal.");
+                    throw new ObjectNotInCandidateException("Found ReferenceConcrete value: " + valueString + ", not corresponding to any literal.");
                 }
             } catch (NumberFormatException e) {
                 throw new SimilarityComputationException("Unexpected invalid concrete object value: " + valueString + ".");
