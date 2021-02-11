@@ -13,36 +13,35 @@ public class SimilarityWithNumericExpression implements ClauseSimilarityHandler 
 	private final ValueCalculator theValueCalculator;
 	
 	public SimilarityWithNumericExpression(ValueCalculator theValueCalculator) {
-		if (theValueCalculator == null) {
-			throw new SimilarityComputationException("Value calculator cannot be null");
-		}
-		this.theValueCalculator = theValueCalculator;
+	    if (theValueCalculator == null) {
+	        throw new SimilarityComputationException("Value calculator cannot be null");
+	    }
+	    this.theValueCalculator = theValueCalculator;
 	}
 
 	@Override
 	public double evaluateSimilarity(CandidateBackbone backbone, Map<String, Object> candidateObjects, Map<Long, String> constants, SushiLibCache cache) {
-		logger.debug("Handling similarity for numeric expression");
-		
-		double similarity = 0.0d;
-		String theVariableOrigin = null; //only for exceptions
-		try {
-			final ArrayList<Object> variables = new ArrayList<>();
-			for (String variableOrigin : this.theValueCalculator.getVariableOrigins()) {
-				theVariableOrigin = variableOrigin;
-				Object variableValue = backbone.retrieveOrVisitField(variableOrigin, candidateObjects, constants, cache);
-				variables.add(variableValue);
-			}
-			similarity += inverseDistanceRatio(this.theValueCalculator.calculate(variables), 1.0d);
-		} catch (FieldNotInCandidateException e) {
-			logger.debug("Field " + theVariableOrigin + " does not yet exist in candidate");			
-		} catch (ObjectNotInCandidateException e) {
-		        logger.debug("Field " + theVariableOrigin + " refers concrete objects in candidate that could not be stored (currently only concrete strings are stored)");                        
-		} catch (FieldDependsOnInvalidFieldPathException e) {
-			logger.debug("Field " + theVariableOrigin + " depends on field path that did not converge yet: " + e.getMessage());			
-		}
-		
-		logger.debug("Similarity increases by: " + similarity);
-		return similarity;
-	}
+	    logger.debug("Handling similarity for numeric expression");
 
+	    double similarity = 0.0d;
+	    String theVariableOrigin = null; //only for exceptions
+	    try {
+	        final ArrayList<Object> variables = new ArrayList<>();
+	        for (String variableOrigin : this.theValueCalculator.getVariableOrigins()) {
+	            theVariableOrigin = variableOrigin;
+	            final Object variableValue = backbone.retrieveOrVisitField(variableOrigin, candidateObjects, constants, cache);
+	            variables.add(variableValue);
+	        }
+	        similarity += inverseDistanceRatio(this.theValueCalculator.calculate(variables), 1.0d);
+	    } catch (FieldNotInCandidateException e) {
+	        logger.debug("Field " + theVariableOrigin + " does not yet exist in candidate");			
+	    } catch (ObjectNotInCandidateException e) {
+	        logger.debug("Field " + theVariableOrigin + " refers concrete objects in candidate that could not be stored (currently only concrete strings are stored)");                        
+	    } catch (FieldDependsOnInvalidFieldPathException e) {
+	        logger.debug("Field " + theVariableOrigin + " depends on field path that did not converge yet: " + e.getMessage());			
+	    }
+
+	    logger.debug("Similarity increases by: " + similarity);
+	    return similarity;
+	}
 }

@@ -14,12 +14,12 @@ public class SimilarityWithRefNotNull extends SimilarityWithRef {
 		
 		double similarity = 0.0d;
 		
-		if (referredObject != null) {
-			logger.debug("Confirmed non-null. Field " + theReferenceOrigin + " is not null");
-			similarity += 1.0d;	
-		}
-		else {
-			logger.debug("Unconfirmed non-null. Field " + theReferenceOrigin + " is null in candidate");
+		if (referredObject == null) {
+                    logger.debug("Unconfirmed non-null. Field " + this.theReferenceOrigin + " is null in candidate");
+                    similarity = 0.0d;
+		} else {
+                    logger.debug("Confirmed non-null. Field " + this.theReferenceOrigin + " is not null");
+                    similarity = 1.0d;      
 		}
 		
 		logger.debug("Similarity increases by: " + similarity);

@@ -10,33 +10,33 @@ public abstract class SimilarityWithRef implements ClauseSimilarityHandler {
 	protected final String theReferenceOrigin;
 	
 	public SimilarityWithRef(String theReferenceOrigin) {
-		if (theReferenceOrigin == null) {
-			throw new SimilarityComputationException("Origin cannot be null");
-		}
-		this.theReferenceOrigin = theReferenceOrigin;
+	    if (theReferenceOrigin == null) {
+	        throw new SimilarityComputationException("Origin cannot be null");
+	    }
+	    this.theReferenceOrigin = theReferenceOrigin;
 	}
 
 	@Override
 	public final double evaluateSimilarity(CandidateBackbone backbone, Map<String, Object> candidateObjects, Map<Long, String> constants, SushiLibCache cache) {
-		logger.debug("Handling similarity with field reference " + this.theReferenceOrigin);
-		
-		double similarity = 0.0d;
-		try {
-			final Object referredObj = backbone.retrieveOrVisitField(this.theReferenceOrigin, candidateObjects, constants, cache);
-			similarity = evaluateSimilarity(backbone, referredObj);
-			if (similarity != 1.0d) {
-				backbone.addInvalidFieldPath(this.theReferenceOrigin);
-			}			
-		} catch (FieldNotInCandidateException e) {
-			logger.debug("Field " + this.theReferenceOrigin + " does not yet exist in candidate");			
-			backbone.addInvalidFieldPath(this.theReferenceOrigin);
-		} catch (ObjectNotInCandidateException e) {
-		        logger.debug("Field " + this.theReferenceOrigin + " refers concrete objects in candidate that could not be stored (currently only concrete strings are stored)");                        
-                        backbone.addInvalidFieldPath(this.theReferenceOrigin);
-		} catch (FieldDependsOnInvalidFieldPathException e) {
-			logger.debug("Field " + this.theReferenceOrigin + " depends on field path that did not converge yet: " + e.getMessage());			
-		}
-		return similarity;
+	    logger.debug("Handling similarity with field reference " + this.theReferenceOrigin);
+
+	    double similarity = 0.0d;
+	    try {
+	        final Object referredObj = backbone.retrieveOrVisitField(this.theReferenceOrigin, candidateObjects, constants, cache);
+	        similarity = evaluateSimilarity(backbone, referredObj);
+	        if (similarity != 1.0d) {
+	            backbone.addInvalidFieldPath(this.theReferenceOrigin);
+	        }			
+	    } catch (FieldNotInCandidateException e) {
+	        logger.debug("Field " + this.theReferenceOrigin + " does not yet exist in candidate");			
+	        backbone.addInvalidFieldPath(this.theReferenceOrigin);
+	    } catch (ObjectNotInCandidateException e) {
+	        logger.debug("Field " + this.theReferenceOrigin + " refers concrete objects in candidate that could not be stored (currently only concrete strings are stored)");                        
+	        backbone.addInvalidFieldPath(this.theReferenceOrigin);
+	    } catch (FieldDependsOnInvalidFieldPathException e) {
+	        logger.debug("Field " + this.theReferenceOrigin + " depends on field path that did not converge yet: " + e.getMessage());			
+	    }
+	    return similarity;
 	}
 
 	protected abstract double evaluateSimilarity(CandidateBackbone backbone, Object referredObject);

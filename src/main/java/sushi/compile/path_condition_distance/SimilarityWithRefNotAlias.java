@@ -18,23 +18,21 @@ public class SimilarityWithRefNotAlias extends SimilarityWithRef {
 	protected double evaluateSimilarity(CandidateBackbone backbone, Object referredObject) {
 		//logger.debug("Ref that do not alias another ref");
 		
-		double similarity;
+		final double similarity;
 		
-		/* Note that the aliased object must have been retrieved in the past,
-		 * thus we do not need to call backbone.retrieveOrVisitField in this case */
-		Object alias = backbone.getObjectByOrigin(theAliasOrigin);
+		//Note that the aliased object must have been retrieved in the past,
+		//thus we do not need to call backbone.retrieveOrVisitField in this case
+		final Object alias = backbone.getObjectByOrigin(this.theAliasOrigin);
 
 		if (referredObject != null && referredObject == alias) {
-			logger.debug("Unconfirmed non-matching aliases. There is match between field " + theReferenceOrigin + " and field " + theAliasOrigin);
-			similarity = 0.0d;
-		}
-		else {
-			similarity = 1.0d;
-			logger.debug("Confirmed non-matching aliases");
+		    logger.debug("Unconfirmed non-matching aliases. There is match between field " + this.theReferenceOrigin + " and field " + this.theAliasOrigin);
+		    similarity = 0.0d;
+		} else {
+		    logger.debug("Confirmed non-matching aliases");
+		    similarity = 1.0d;
 		}
 
 		logger.debug("Similarity increases by: " + similarity);
 		return similarity;
 	}
-
 }

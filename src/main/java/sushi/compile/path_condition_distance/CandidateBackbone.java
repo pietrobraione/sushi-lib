@@ -1,6 +1,5 @@
 package sushi.compile.path_condition_distance;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -13,9 +12,9 @@ public class CandidateBackbone {
 	private final ClassLoader classLoader;
 	
 	// We keep the direct and reverse mapping between visited objects and their origins 
-	private final Map<ObjectMapWrapper, String> freshObjects = new HashMap<ObjectMapWrapper, String>(); 
-	private final Map<String, Object> visitedOrigins = new HashMap<String, Object>(); 
-	private final Collection<String> invalidFieldPaths = new HashSet<String>(); 
+	private final HashMap<ObjectMapWrapper, String> freshObjects = new HashMap<>(); 
+	private final HashMap<String, Object> visitedOrigins = new HashMap<>(); 
+	private final HashSet<String> invalidFieldPaths = new HashSet<>(); 
 	
 	public CandidateBackbone(ClassLoader classLoader) {
 		this.classLoader = classLoader;
