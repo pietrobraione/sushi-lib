@@ -22,7 +22,7 @@ public class SimilarityWithRefToAlias extends SimilarityWithRef {
 		
 		double similarity = 0.0d;
 		
-		Object alias = backbone.getVisitedObject(theAliasOrigin);
+		Object alias = backbone.getObjectByOrigin(theAliasOrigin);
 
 		if (referredObject != null && referredObject == alias) {
 			logger.debug("Matching aliases between field " + theReferenceOrigin + " and field " + theAliasOrigin);
