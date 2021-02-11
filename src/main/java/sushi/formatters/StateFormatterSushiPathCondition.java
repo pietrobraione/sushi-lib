@@ -239,8 +239,8 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 final char type = ((Primitive) symbol).getType();
                 return javaPrimitiveType(type);
             } else if (symbol instanceof ReferenceSymbolic) {
-                final String className = "java.lang.Object"; //We declare all reference-typed parameters with type Object - EvoSuite will pass the correct types dynamically
-                return className;
+                final String className = ((ReferenceSymbolic) symbol).getStaticType();
+                return javaClass(className, true);
             } else {
                 //this should never happen
                 throw new RuntimeException("Reached unreachable branch while calculating the Java type of a symbol: Perhaps some type of symbol is not handled yet.");
