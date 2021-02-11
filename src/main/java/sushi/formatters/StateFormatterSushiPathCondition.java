@@ -5,6 +5,7 @@ import static jbse.apps.run.JAVA_MAP_Utils.possiblyAdaptMapModelSymbols;
 import static jbse.bc.Signatures.JAVA_STRING_VALUE;
 import static jbse.common.Type.CHAR;
 import static jbse.common.Type.toPrimitiveOrVoidCanonicalName;
+import static jbse.val.Util.asStringLiteral;
 import static sushi.util.TypeUtils.javaClass;
 import static sushi.util.TypeUtils.javaPrimitiveType;
 
@@ -129,9 +130,9 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 this.output.append(INDENT_1);
                 this.output.append("private static final String CONST_");
                 this.output.append(lit.getKey());
-                this.output.append(" = \"");
-                this.output.append(lit.getValue());
-                this.output.append("\";\n");
+                this.output.append(" = ");
+                this.output.append(asStringLiteral(lit.getValue()));
+                this.output.append(";\n");
             }
 
             //private members and constructor declaration
