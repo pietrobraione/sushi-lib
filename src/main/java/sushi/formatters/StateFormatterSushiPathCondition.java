@@ -1037,19 +1037,41 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             }
             
             final StringBuilder retVal = new StringBuilder();
-            retVal.append("(");
-            if (!shallBeEqual) {
-                retVal.append("!");
-            }
             retVal.append("((");
             retVal.append(firstArg);
             retVal.append(" == null && ");
             retVal.append(secondArg);
-            retVal.append(" == null) || ");
+            retVal.append(" == null) ? ");
+            if (shallBeEqual) {
+                retVal.append("0");
+            } else {
+                retVal.append("1");
+            }
+            retVal.append(" : ((");
+            retVal.append(firstArg);
+            retVal.append(" == null && ");
+            retVal.append(secondArg);
+            retVal.append(" != null) || (");
+            retVal.append(firstArg);
+            retVal.append(" != null && ");
+            retVal.append(secondArg);
+            retVal.append(" == null)) ? ");
+            if (shallBeEqual) {
+                retVal.append("1");
+            } else {
+                retVal.append("0");
+            }
+            retVal.append(" : ");
             retVal.append(firstArg);
             retVal.append(".equals(");
             retVal.append(secondArg);
-            retVal.append(")) ? 0.0 : ");
+            retVal.append(") ? ");
+            if (shallBeEqual) {
+                retVal.append("0");
+            } else {
+                retVal.append("1");
+            }
+            retVal.append(" : ");
             if (shallBeEqual) {
                 retVal.append("sushi.compile.distance.LevenshteinDistance.calculateDistance(");
                 retVal.append(firstArg);
@@ -1057,7 +1079,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 retVal.append(secondArg);
                 retVal.append(")");
             } else {
-                retVal.append("1.0");
+                retVal.append("1");
             }
             retVal.append(")");
             return retVal.toString();
