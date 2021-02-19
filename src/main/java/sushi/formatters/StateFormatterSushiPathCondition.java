@@ -2,6 +2,7 @@ package sushi.formatters;
 
 import static jbse.apps.run.JAVA_MAP_Utils.isInitialMapField;
 import static jbse.apps.run.JAVA_MAP_Utils.possiblyAdaptMapModelSymbols;
+import static jbse.bc.Signatures.JAVA_STRING_EQUALS;
 import static jbse.bc.Signatures.JAVA_STRING_VALUE;
 import static jbse.common.Type.CHAR;
 import static jbse.common.Type.toPrimitiveOrVoidCanonicalName;
@@ -342,7 +343,11 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                     this.s.append("\n");
                     final ClauseAssume clauseAssume = (ClauseAssume) clause;
                     final Primitive assumption = clauseAssume.getCondition();
-                    setNumericAssumption(finalState, assumption);
+                    if (isStringEqualsAssumption(assumption)) {
+                        setStringEqualsAssumption(finalState, assumption);
+                    } else {
+                        setNumericAssumption(finalState, assumption);
+                    }
                 } //else, do nothing
             }
             this.s.append("\n");
@@ -763,6 +768,126 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             }
             return null;
         }
+        
+        private boolean isStringEqualsAssumption(Primitive assumption) {
+            if (!(assumption instanceof Expression)) {
+                return false;
+            }
+            final Expression assumptionExpression = (Expression) assumption;
+            if (assumptionExpression.isUnary()) {
+                return false;
+            }
+            if (assumptionExpression.getOperator() != Operator.EQ && assumptionExpression.getOperator() != Operator.NE) {
+                return false;
+            }
+            final Primitive firstOperand = assumptionExpression.getFirstOperand();
+            final Primitive secondOperand = assumptionExpression.getSecondOperand();
+            final Simplex simplexOperand;
+            final Primitive otherOperand;
+            if (firstOperand instanceof Simplex) {
+                simplexOperand = (Simplex) firstOperand;
+                otherOperand = secondOperand;
+            } else if (secondOperand instanceof Simplex) {
+                simplexOperand = (Simplex) secondOperand;
+                otherOperand = firstOperand;
+            } else {
+                return false;
+            }
+            if (simplexOperand.getType() != Type.INT || (!simplexOperand.isZeroOne(true) && !simplexOperand.isZeroOne(false))) {
+                return false;
+            }
+            if (otherOperand instanceof WideningConversion) {
+                final WideningConversion wideningOperand = (WideningConversion) otherOperand;
+                if (wideningOperand.getArg() instanceof PrimitiveSymbolicApply) {
+                    final PrimitiveSymbolicApply apply = (PrimitiveSymbolicApply) wideningOperand.getArg();
+                    return JAVA_STRING_EQUALS.toString().equals(apply.getOperator());
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+        
+        private void setStringEqualsAssumption(State state, Primitive assumption) {
+            final Reference firstArgEquals, secondArgEquals;
+            final boolean shallBeEqual;
+            {
+                final Expression assumptionExpression = (Expression) assumption;
+                final Primitive firstOperand = assumptionExpression.getFirstOperand();
+                final Primitive secondOperand = assumptionExpression.getSecondOperand();
+                final WideningConversion wideningOperand = (WideningConversion) ((firstOperand instanceof WideningConversion) ? firstOperand : secondOperand);
+                final PrimitiveSymbolicApply apply = (PrimitiveSymbolicApply) wideningOperand.getArg();
+                final Value[] args = apply.getArgs();
+                firstArgEquals = (Reference) args[0];
+                secondArgEquals = (Reference) args[1];
+                final Simplex simplexOperand = (Simplex) ((firstOperand instanceof Simplex) ? firstOperand : secondOperand);
+                final boolean isZero = simplexOperand.isZeroOne(true);
+                final Operator operator = assumptionExpression.getOperator();
+                shallBeEqual = (isZero && operator == Operator.NE) || (!isZero && operator == Operator.EQ);
+            }
+            
+            final ArrayList<ReferenceSymbolic> symbolicStrings = new ArrayList<>();
+            final ArrayList<ReferenceConcrete> concreteStrings = new ArrayList<>();
+            if (firstArgEquals.isSymbolic()) {
+                symbolicStrings.add((ReferenceSymbolic) firstArgEquals);
+            } else {
+                concreteStrings.add((ReferenceConcrete) firstArgEquals);
+            }
+            if (secondArgEquals.isSymbolic()) {
+                symbolicStrings.add((ReferenceSymbolic) secondArgEquals);
+            } else {
+                concreteStrings.add((ReferenceConcrete) secondArgEquals);
+            }
+            
+            this.s.append(INDENT_2);
+            this.s.append("valueCalculator = new ValueCalculator() {\n");
+            this.s.append(INDENT_3);
+            this.s.append("@Override public Iterable<String> getVariableOrigins() {\n");
+            this.s.append(INDENT_4);
+            this.s.append("ArrayList<String> retVal = new ArrayList<>();\n");       
+            for (ReferenceSymbolic symbol: symbolicStrings) {
+                this.s.append(INDENT_4);
+                this.s.append("retVal.add(\"");
+                this.s.append(getPossiblyAdaptedOriginString(symbol));
+                this.s.append("\");\n");
+            }
+            this.s.append(INDENT_4);
+            this.s.append("return retVal;\n");       
+            this.s.append(INDENT_3);
+            this.s.append("}\n");       
+            this.s.append(INDENT_3);
+            this.s.append("@Override public double calculate(List<Object> variables) {\n");
+            for (int i = 0; i < symbolicStrings.size(); ++i) {
+                final ReferenceSymbolic symbolicString = symbolicStrings.get(i);
+                makeVariableFor(symbolicString);
+                this.s.append(INDENT_4);
+                this.s.append("final String ");
+                this.s.append(getVariableFor(symbolicString));
+                this.s.append(" = (String) variables.get(");
+                this.s.append(i);
+                this.s.append(");\n");
+            }
+            for (int i = 0; i < concreteStrings.size(); ++i) {
+                final ReferenceConcrete concreteString = concreteStrings.get(i);
+                this.s.append(INDENT_4);
+                this.s.append("final String S");
+                this.s.append(concreteString.getHeapPosition());
+                this.s.append(" = (String) finalHeap.get(");
+                this.s.append(concreteString.getHeapPosition());
+                this.s.append(");\n");
+            }
+            this.s.append(INDENT_4);
+            this.s.append("return ");
+            this.s.append(javaStringEqualsAssumptionCheck(state, firstArgEquals, secondArgEquals, shallBeEqual));
+            this.s.append(";\n");
+            this.s.append(INDENT_3);
+            this.s.append("}\n");
+            this.s.append(INDENT_2);
+            this.s.append("};\n");
+            this.s.append(INDENT_2);
+            this.s.append("pathConditionHandler.add(new SimilarityWithNumericExpression(valueCalculator));\n");
+        }
 
         private void setNumericAssumption(State state, Primitive assumption) {
             final List<Symbolic> symbols = symbolsInNumericAssumption(assumption);
@@ -895,6 +1020,47 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             default:
                 return null;
             }
+        }
+        
+        private String javaStringEqualsAssumptionCheck(State state, Reference firstArgEquals, Reference secondArgEquals, boolean shallBeEqual) {
+            final String firstArg;
+            if (firstArgEquals instanceof ReferenceSymbolic) {
+                firstArg = getVariableFor((ReferenceSymbolic) firstArgEquals);
+            } else {
+                firstArg = "S" + ((ReferenceConcrete) firstArgEquals).getHeapPosition();
+            }
+            final String secondArg;
+            if (secondArgEquals instanceof ReferenceSymbolic) {
+                secondArg = getVariableFor((ReferenceSymbolic) secondArgEquals);
+            } else {
+                secondArg = "S" + ((ReferenceConcrete) secondArgEquals).getHeapPosition();
+            }
+            
+            final StringBuilder retVal = new StringBuilder();
+            retVal.append("(");
+            if (!shallBeEqual) {
+                retVal.append("!");
+            }
+            retVal.append("((");
+            retVal.append(firstArg);
+            retVal.append(" == null && ");
+            retVal.append(secondArg);
+            retVal.append(" == null) || ");
+            retVal.append(firstArg);
+            retVal.append(".equals(");
+            retVal.append(secondArg);
+            retVal.append(")) ? 0.0 : ");
+            if (shallBeEqual) {
+                retVal.append("sushi.compile.distance.LevenshteinDistance.calculateDistance(");
+                retVal.append(firstArg);
+                retVal.append(", ");
+                retVal.append(secondArg);
+                retVal.append(")");
+            } else {
+                retVal.append("1.0");
+            }
+            retVal.append(")");
+            return retVal.toString();
         }
 
         private String javaAssumptionCheck(State state, Primitive assumption) {
