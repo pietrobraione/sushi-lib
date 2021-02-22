@@ -71,8 +71,8 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
     private final Supplier<Long> traceCounterSupplier;
     private final Supplier<State> initialStateSupplier;
     private final boolean shallRelaxLastExpansionClause;
-    private HashMap<Long, String> stringLiterals = null;
-    private TreeSet<Long> stringOthers = null;
+    private HashMap<Long, String> stringLiterals = new HashMap<>();
+    private TreeSet<Long> stringOthers = new TreeSet<>();
     private StringBuilder output = new StringBuilder();
     private int testCounter = 0;
 

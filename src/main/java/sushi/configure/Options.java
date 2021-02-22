@@ -73,7 +73,7 @@ public class Options {
 	private Path z3Path = Paths.get("/usr", "bin", "z3");
 	
 	@Option(name = "-java8_home",
-			usage = "Path to Java 8 home (default: none, expect Java executables on the system PATH)",
+			usage = "Path to Java 8 home (default: none, use Java executables on the system PATH)",
 			handler = PathOptionHandler.class)
 	private Path java8Path;
 	
