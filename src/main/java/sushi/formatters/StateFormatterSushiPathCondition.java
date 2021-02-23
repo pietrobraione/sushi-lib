@@ -2,9 +2,14 @@ package sushi.formatters;
 
 import static jbse.apps.run.JAVA_MAP_Utils.isInitialMapField;
 import static jbse.apps.run.JAVA_MAP_Utils.possiblyAdaptMapModelSymbols;
+import static jbse.bc.Signatures.JAVA_CHARSEQUENCE;
+import static jbse.bc.Signatures.JAVA_STRING;
 import static jbse.bc.Signatures.JAVA_STRING_EQUALS;
 import static jbse.bc.Signatures.JAVA_STRING_VALUE;
+import static jbse.common.Type.BOOLEAN;
 import static jbse.common.Type.CHAR;
+import static jbse.common.Type.REFERENCE;
+import static jbse.common.Type.TYPEEND;
 import static jbse.common.Type.toPrimitiveOrVoidCanonicalName;
 import static jbse.val.Util.asStringLiteral;
 import static sushi.util.TypeUtils.javaClass;
@@ -23,6 +28,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import jbse.bc.ClassHierarchy;
+import jbse.bc.Signature;
 import jbse.common.Type;
 import jbse.common.exc.UnexpectedInternalException;
 import jbse.mem.Array;
@@ -217,6 +223,9 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
     INDENT_1 + "public EvoSuiteWrapper";
 
     private static class MethodUnderTest {
+        private static final Signature JAVA_STRING_CONTAINS = 
+        new Signature(JAVA_STRING, "(" + REFERENCE + JAVA_CHARSEQUENCE + TYPEEND + ")" + BOOLEAN, "contains");
+
         private final StringBuilder s;
         private final HashMap<Symbolic, String> symbolsToVariables = new HashMap<>();
         private final HashMap<String, Symbolic> variablesToSymbols = new HashMap<>();
@@ -236,7 +245,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             appendMethodEnd(finalState, testCounter);
         }
 
-        public static String javaType(Symbolic symbol) {
+        private static String javaType(Symbolic symbol) {
             if (symbol instanceof Primitive) { //either PrimitiveSymbolic or Term (however, it should never be the case of a Term)
                 final char type = ((Primitive) symbol).getType();
                 return javaPrimitiveType(type);
@@ -343,8 +352,8 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                     this.s.append("\n");
                     final ClauseAssume clauseAssume = (ClauseAssume) clause;
                     final Primitive assumption = clauseAssume.getCondition();
-                    if (isStringEqualsAssumption(assumption)) {
-                        setStringEqualsAssumption(finalState, assumption);
+                    if (isAssumptionOnBooleanApply(assumption)) {
+                        setAssumptionOnBooleanApply(finalState, assumption);
                     } else {
                         setNumericAssumption(finalState, assumption);
                     }
@@ -769,7 +778,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             return null;
         }
         
-        private boolean isStringEqualsAssumption(Primitive assumption) {
+        private boolean isAssumptionOnBooleanApply(Primitive assumption) {
             if (!(assumption instanceof Expression)) {
                 return false;
             }
@@ -800,7 +809,10 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 final WideningConversion wideningOperand = (WideningConversion) otherOperand;
                 if (wideningOperand.getArg() instanceof PrimitiveSymbolicApply) {
                     final PrimitiveSymbolicApply apply = (PrimitiveSymbolicApply) wideningOperand.getArg();
-                    return JAVA_STRING_EQUALS.toString().equals(apply.getOperator());
+                    final String applyOperator = apply.getOperator();
+                    return 
+                    JAVA_STRING_EQUALS.toString().equals(applyOperator) || 
+                    JAVA_STRING_CONTAINS.toString().equals(applyOperator);
                 } else {
                     return false;
                 }
@@ -809,8 +821,10 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             }
         }
         
-        private void setStringEqualsAssumption(State state, Primitive assumption) {
-            final Reference firstArgEquals, secondArgEquals;
+        //TODO this code assumes all reference args point to strings
+        private void setAssumptionOnBooleanApply(State state, Primitive assumption) {
+            final Value[] applyArgs;
+            final String applyOperator;
             final boolean shallBeEqual;
             {
                 final Expression assumptionExpression = (Expression) assumption;
@@ -818,9 +832,8 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 final Primitive secondOperand = assumptionExpression.getSecondOperand();
                 final WideningConversion wideningOperand = (WideningConversion) ((firstOperand instanceof WideningConversion) ? firstOperand : secondOperand);
                 final PrimitiveSymbolicApply apply = (PrimitiveSymbolicApply) wideningOperand.getArg();
-                final Value[] args = apply.getArgs();
-                firstArgEquals = (Reference) args[0];
-                secondArgEquals = (Reference) args[1];
+                applyArgs = apply.getArgs();
+                applyOperator = apply.getOperator();
                 final Simplex simplexOperand = (Simplex) ((firstOperand instanceof Simplex) ? firstOperand : secondOperand);
                 final boolean isZero = simplexOperand.isZeroOne(true);
                 final Operator operator = assumptionExpression.getOperator();
@@ -829,15 +842,12 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             
             final ArrayList<ReferenceSymbolic> symbolicStrings = new ArrayList<>();
             final ArrayList<ReferenceConcrete> concreteStrings = new ArrayList<>();
-            if (firstArgEquals.isSymbolic()) {
-                symbolicStrings.add((ReferenceSymbolic) firstArgEquals);
-            } else {
-                concreteStrings.add((ReferenceConcrete) firstArgEquals);
-            }
-            if (secondArgEquals.isSymbolic()) {
-                symbolicStrings.add((ReferenceSymbolic) secondArgEquals);
-            } else {
-                concreteStrings.add((ReferenceConcrete) secondArgEquals);
+            for (Value arg : applyArgs) {
+                if (arg instanceof ReferenceSymbolic) {
+                    symbolicStrings.add((ReferenceSymbolic) arg);
+                } else if (arg instanceof ReferenceConcrete)  {
+                    concreteStrings.add((ReferenceConcrete) arg);
+                }
             }
             
             this.s.append(INDENT_2);
@@ -875,11 +885,18 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 this.s.append(concreteString.getHeapPosition());
                 this.s.append(" = (String) finalHeap.get(");
                 this.s.append(concreteString.getHeapPosition());
-                this.s.append(");\n");
+                this.s.append("L);\n");
             }
             this.s.append(INDENT_4);
             this.s.append("return ");
-            this.s.append(javaStringEqualsAssumptionCheck(state, firstArgEquals, secondArgEquals, shallBeEqual));
+            if (JAVA_STRING_EQUALS.toString().equals(applyOperator)) {
+                this.s.append(javaStringEqualsAssumptionCheck(state, applyArgs, shallBeEqual));
+            } else if (JAVA_STRING_CONTAINS.toString().equals(applyOperator)) {
+                this.s.append(javaStringContainsAssumptionCheck(state, applyArgs, shallBeEqual));
+            } else {
+                //this should never happen
+                throw new AssertionError("Unexpected function application of " + applyOperator + " for which a fitness function does not exist.");
+            }
             this.s.append(";\n");
             this.s.append(INDENT_3);
             this.s.append("}\n");
@@ -1022,18 +1039,18 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             }
         }
         
-        private String javaStringEqualsAssumptionCheck(State state, Reference firstArgEquals, Reference secondArgEquals, boolean shallBeEqual) {
+        private String javaStringEqualsAssumptionCheck(State state, Value[] applyArgs, boolean shallBeEqual) {
             final String firstArg;
-            if (firstArgEquals instanceof ReferenceSymbolic) {
-                firstArg = getVariableFor((ReferenceSymbolic) firstArgEquals);
+            if (applyArgs[0] instanceof ReferenceSymbolic) {
+                firstArg = getVariableFor((ReferenceSymbolic) applyArgs[0]);
             } else {
-                firstArg = "S" + ((ReferenceConcrete) firstArgEquals).getHeapPosition();
+                firstArg = "S" + ((ReferenceConcrete) applyArgs[0]).getHeapPosition();
             }
             final String secondArg;
-            if (secondArgEquals instanceof ReferenceSymbolic) {
-                secondArg = getVariableFor((ReferenceSymbolic) secondArgEquals);
+            if (applyArgs[1] instanceof ReferenceSymbolic) {
+                secondArg = getVariableFor((ReferenceSymbolic) applyArgs[1]);
             } else {
-                secondArg = "S" + ((ReferenceConcrete) secondArgEquals).getHeapPosition();
+                secondArg = "S" + ((ReferenceConcrete) applyArgs[1]).getHeapPosition();
             }
             
             final StringBuilder retVal = new StringBuilder();
@@ -1074,6 +1091,69 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             retVal.append(" : ");
             if (shallBeEqual) {
                 retVal.append("sushi.compile.distance.LevenshteinDistance.calculateDistance(");
+                retVal.append(firstArg);
+                retVal.append(", ");
+                retVal.append(secondArg);
+                retVal.append(")");
+            } else {
+                retVal.append("1");
+            }
+            retVal.append(")");
+            return retVal.toString();
+        }
+
+        private String javaStringContainsAssumptionCheck(State state, Value[] applyArgs, boolean shallBeEqual) {
+            final String firstArg;
+            if (applyArgs[0] instanceof ReferenceSymbolic) {
+                firstArg = getVariableFor((ReferenceSymbolic) applyArgs[0]);
+            } else {
+                firstArg = "S" + ((ReferenceConcrete) applyArgs[0]).getHeapPosition();
+            }
+            final String secondArg;
+            if (applyArgs[1] instanceof ReferenceSymbolic) {
+                secondArg = getVariableFor((ReferenceSymbolic) applyArgs[1]);
+            } else {
+                secondArg = "S" + ((ReferenceConcrete) applyArgs[1]).getHeapPosition();
+            }
+            
+            final StringBuilder retVal = new StringBuilder();
+            retVal.append("((");
+            retVal.append(firstArg);
+            retVal.append(" == null && ");
+            retVal.append(secondArg);
+            retVal.append(" == null) ? ");
+            if (shallBeEqual) {
+                retVal.append("0");
+            } else {
+                retVal.append("1");
+            }
+            retVal.append(" : ((");
+            retVal.append(firstArg);
+            retVal.append(" == null && ");
+            retVal.append(secondArg);
+            retVal.append(" != null) || (");
+            retVal.append(firstArg);
+            retVal.append(" != null && ");
+            retVal.append(secondArg);
+            retVal.append(" == null)) ? ");
+            if (shallBeEqual) {
+                retVal.append("1");
+            } else {
+                retVal.append("0");
+            }
+            retVal.append(" : ");
+            retVal.append(firstArg);
+            retVal.append(".contains(");
+            retVal.append(secondArg);
+            retVal.append(") ? ");
+            if (shallBeEqual) {
+                retVal.append("0");
+            } else {
+                retVal.append("1");
+            }
+            retVal.append(" : ");
+            if (shallBeEqual) {
+                retVal.append("sushi.compile.distance.ContainmentDistance.calculateDistance(");
                 retVal.append(firstArg);
                 retVal.append(", ");
                 retVal.append(secondArg);
@@ -1319,6 +1399,5 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 
             return translation.get(0);
         }
-
     }
 }
