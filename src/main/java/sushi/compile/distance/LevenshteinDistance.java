@@ -14,7 +14,6 @@ package sushi.compile.distance;
  * calculated).
  */
 public class LevenshteinDistance {
-
 	public static int calculateDistance(final String s, final String t) {
 		int sLength = (s == null) ? 0 : s.length();
 		int tLength = (t == null) ? 0 : t.length();
@@ -25,38 +24,32 @@ public class LevenshteinDistance {
 			return sLength;
 		}
 
-		int previousCost[] = new int[sLength + 1]; // 'previous' cost array, horizontally
-		int cost[] = new int[sLength + 1]; // cost array, horizontally
-		int _temp[]; // placeholder to assist in swapping p and d
+		int[] previousCost = new int[sLength + 1]; // 'previous' cost array, horizontally
+		int[] cost = new int[sLength + 1]; // cost array, horizontally
 
-		char t_j; // jth character of t
-		int singleCost; // cost
-
-		for (int i = 0; i <= sLength; i++) {
+		for (int i = 0; i < sLength + 1; ++i) {
 			previousCost[i] = i;
 		}
 
-		for (int j = 1; j <= tLength; j++) {
-			t_j = t.charAt(j - 1);
-			cost[0] = j;
-
-			for (int i = 1; i <= sLength; i++) {
-				singleCost = s.charAt(i - 1) == (t_j) ? 0 : 1;
+		for (int j = 0; j < tLength; ++j) {
+			final char t_j = t.charAt(j); // jth character of t
+			
+			cost[0] = j + 1;
+			for (int i = 0; i < sLength; i++) {
+				final int singleCost = s.charAt(i) == (t_j) ? 0 : 1;
 				// minimum of cell to the left+1, to the top+1, diagonally left and up + cost
-				cost[i] = Math.min(Math.min(cost[i - 1] + 1, previousCost[i] + 1), previousCost[i - 1] + singleCost);
+				cost[i + 1] = Math.min(Math.min(cost[i] + 1, previousCost[i + 1] + 1), previousCost[i] + singleCost);
 			}
 
 			// copy current distance counts to 'previous row' distance counts
-			_temp = previousCost;
+			final int[] _temp = previousCost;
 			previousCost = cost;
 			cost = _temp;
 		}
 
 		// our last action in the above loop was to switch d and p, so p now
 		// actually has the most recent cost counts
-		int result = previousCost[sLength];
-		
+		final int result = previousCost[sLength];
 		return result;
 	}
-
 }
