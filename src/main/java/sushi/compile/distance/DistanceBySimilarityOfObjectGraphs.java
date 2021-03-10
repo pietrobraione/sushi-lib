@@ -183,11 +183,11 @@ public class DistanceBySimilarityOfObjectGraphs {
 			String packageCandidate = classNameCandidate.substring(0, splitPoint);
 			classNameCandidate = classNameCandidate.substring(splitPoint, classNameCandidate.length());
 			
-			int packageDistance = PrefixDistance.calculateDistance(packageTarget, packageCandidate);
+			int packageDistance = EdgeDistance.calculateDistance(packageTarget, packageCandidate);
 			similarity += inverseDistanceExp(packageDistance, 0.5d);
 			if (packageDistance == 0) {
 				logger.debug("same packages: " + objTarget.getClass() + " vs " + objCandidate.getClass());
-				double classNameDistance = LevenshteinDistance.calculateDistance(classNameTarget, classNameCandidate);
+				double classNameDistance = StringDistanceFunctions.distanceEditLevenshtein(classNameTarget, classNameCandidate);
 				similarity += inverseDistanceExp(classNameDistance, 0.5d);
 			}
 
@@ -288,7 +288,7 @@ public class DistanceBySimilarityOfObjectGraphs {
 			if (targetIsPartiallySymbolicObject && !fieldsToBeConsidered.contains(new ObjectField(objTarget, String.class.getDeclaredField("value")))) {
 				similarity += 1.0d;
 			} else {
-				double distance = LevenshteinDistance.calculateDistance((String) objTarget, (String) objCandidate);
+				double distance = StringDistanceFunctions.distanceEditLevenshtein((String) objTarget, (String) objCandidate);
 				if (distance == 0.0d) similarity += 1.0d;
 				else {
 					similarity += inverseDistanceExp(distance, 1.0d);
@@ -404,7 +404,7 @@ public class DistanceBySimilarityOfObjectGraphs {
 		else {	
 			logger.debug("Non-matching edges");
 			//double edgeDistance = LevenshteinDistance.calculateDistance(targetId, candidateId);
-			int edgeDistance = PrefixDistance.calculateDistance(targetId, candidateId);
+			int edgeDistance = EdgeDistance.calculateDistance(targetId, candidateId);
 			assert (edgeDistance != 0);
 			similarity += inverseDistanceExp(edgeDistance, 1.0d);
 			converged = false;

@@ -225,6 +225,10 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
     private static class MethodUnderTest {
         private static final Signature JAVA_STRING_CONTAINS = 
         new Signature(JAVA_STRING, "(" + REFERENCE + JAVA_CHARSEQUENCE + TYPEEND + ")" + BOOLEAN, "contains");
+        private static final Signature JAVA_STRING_ENDSWITH = 
+        new Signature(JAVA_STRING, "(" + REFERENCE + JAVA_STRING + TYPEEND + ")" + BOOLEAN, "endsWith");
+        private static final Signature JAVA_STRING_STARTSWITH = 
+        new Signature(JAVA_STRING, "(" + REFERENCE + JAVA_STRING + TYPEEND + ")" + BOOLEAN, "startsWith");
 
         private final StringBuilder s;
         private final HashMap<Symbolic, String> symbolsToVariables = new HashMap<>();
@@ -890,9 +894,13 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             this.s.append(INDENT_4);
             this.s.append("return ");
             if (JAVA_STRING_EQUALS.toString().equals(applyOperator)) {
-                this.s.append(javaStringEqualsAssumptionCheck(state, applyArgs, shallBeEqual));
+                this.s.append(javaStringComparisonAssumptionCheck(state, applyArgs, shallBeEqual, "equals", "distanceEditLevenshtein"));
             } else if (JAVA_STRING_CONTAINS.toString().equals(applyOperator)) {
-                this.s.append(javaStringContainsAssumptionCheck(state, applyArgs, shallBeEqual));
+                this.s.append(javaStringComparisonAssumptionCheck(state, applyArgs, shallBeEqual, "contains", "distanceContainment"));
+            } else if (JAVA_STRING_ENDSWITH.toString().equals(applyOperator)) {
+                this.s.append(javaStringComparisonAssumptionCheck(state, applyArgs, shallBeEqual, "endsWith", "distanceSuffix"));
+            } else if (JAVA_STRING_STARTSWITH.toString().equals(applyOperator)) {
+                this.s.append(javaStringComparisonAssumptionCheck(state, applyArgs, shallBeEqual, "startsWith", "distancePrefix"));
             } else {
                 //this should never happen
                 throw new AssertionError("Unexpected function application of " + applyOperator + " for which a fitness function does not exist.");
@@ -1039,7 +1047,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             }
         }
         
-        private String javaStringEqualsAssumptionCheck(State state, Value[] applyArgs, boolean shallBeEqual) {
+        private String javaStringComparisonAssumptionCheck(State state, Value[] applyArgs, boolean shallBeEqual, String javaMethod, String distanceFunction) {
             final String firstArg;
             if (applyArgs[0] instanceof ReferenceSymbolic) {
                 firstArg = getVariableFor((ReferenceSymbolic) applyArgs[0]);
@@ -1080,7 +1088,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             }
             retVal.append(" : ");
             retVal.append(firstArg);
-            retVal.append(".equals(");
+            retVal.append("." + javaMethod + "(");
             retVal.append(secondArg);
             retVal.append(") ? ");
             if (shallBeEqual) {
@@ -1090,7 +1098,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             }
             retVal.append(" : ");
             if (shallBeEqual) {
-                retVal.append("sushi.compile.distance.LevenshteinDistance.calculateDistance(");
+                retVal.append("sushi.compile.distance.StringDistanceFunctions." + distanceFunction + "(");
                 retVal.append(firstArg);
                 retVal.append(", ");
                 retVal.append(secondArg);
@@ -1101,70 +1109,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             retVal.append(")");
             return retVal.toString();
         }
-
-        private String javaStringContainsAssumptionCheck(State state, Value[] applyArgs, boolean shallBeEqual) {
-            final String firstArg;
-            if (applyArgs[0] instanceof ReferenceSymbolic) {
-                firstArg = getVariableFor((ReferenceSymbolic) applyArgs[0]);
-            } else {
-                firstArg = "S" + ((ReferenceConcrete) applyArgs[0]).getHeapPosition();
-            }
-            final String secondArg;
-            if (applyArgs[1] instanceof ReferenceSymbolic) {
-                secondArg = getVariableFor((ReferenceSymbolic) applyArgs[1]);
-            } else {
-                secondArg = "S" + ((ReferenceConcrete) applyArgs[1]).getHeapPosition();
-            }
-            
-            final StringBuilder retVal = new StringBuilder();
-            retVal.append("((");
-            retVal.append(firstArg);
-            retVal.append(" == null && ");
-            retVal.append(secondArg);
-            retVal.append(" == null) ? ");
-            if (shallBeEqual) {
-                retVal.append("0");
-            } else {
-                retVal.append("1");
-            }
-            retVal.append(" : ((");
-            retVal.append(firstArg);
-            retVal.append(" == null && ");
-            retVal.append(secondArg);
-            retVal.append(" != null) || (");
-            retVal.append(firstArg);
-            retVal.append(" != null && ");
-            retVal.append(secondArg);
-            retVal.append(" == null)) ? ");
-            if (shallBeEqual) {
-                retVal.append("1");
-            } else {
-                retVal.append("0");
-            }
-            retVal.append(" : ");
-            retVal.append(firstArg);
-            retVal.append(".contains(");
-            retVal.append(secondArg);
-            retVal.append(") ? ");
-            if (shallBeEqual) {
-                retVal.append("0");
-            } else {
-                retVal.append("1");
-            }
-            retVal.append(" : ");
-            if (shallBeEqual) {
-                retVal.append("sushi.compile.distance.ContainmentDistance.calculateDistance(");
-                retVal.append(firstArg);
-                retVal.append(", ");
-                retVal.append(secondArg);
-                retVal.append(")");
-            } else {
-                retVal.append("1");
-            }
-            retVal.append(")");
-            return retVal.toString();
-        }
-
+        
         private String javaAssumptionCheck(State state, Primitive assumption) {
             //first pass: Eliminate negation
             final ArrayList<Primitive> assumptionWithNoNegation = new ArrayList<>(); //we use only one element as it were a reference to a String variable            

@@ -273,13 +273,13 @@ public class PrimitiveDistance {
 	private static double charDistance(char a, char b) {
 		String stringF1 = new String(new char[] { a });
 		String stringF2 = new String(new char[] { b });
-		return LevenshteinDistance.calculateDistance(stringF1, stringF2);
+		return StringDistanceFunctions.distanceEditLevenshtein(stringF1, stringF2);
 	}
 	
 	private static double charDistance(char[] a, char[] b) {
 		String stringF1 = new String(a);
 		String stringF2 = new String(b);
-		return LevenshteinDistance.calculateDistance(stringF1, stringF2);
+		return StringDistanceFunctions.distanceEditLevenshtein(stringF1, stringF2);
 	}
 
 	private static double booleanDistance(boolean a, boolean b) {

@@ -121,7 +121,7 @@ public class DistanceSBES {
 			//------------------STRING-----------------
 			else if (ReflectionUtils.isString(objPartial)) {
 				logger.debug("Strings");
-				distance += LevenshteinDistance.calculateDistance((String) objPartial, (String) objComplete);
+				distance += StringDistanceFunctions.distanceEditLevenshtein((String) objPartial, (String) objComplete);
 				logger.debug("Distance: " + distance);
 				continue;
 			}
@@ -173,7 +173,7 @@ public class DistanceSBES {
 						distance += PrimitiveDistance.distance(fPartial, objPartial, fComplete, objComplete);
 						break;
 					case STRING:
-						distance += LevenshteinDistance.calculateDistance((String) fPartial.get(objPartial), (String) fComplete.get(objComplete));
+						distance += StringDistanceFunctions.distanceEditLevenshtein((String) fPartial.get(objPartial), (String) fComplete.get(objComplete));
 						break;
 					case ARRAY:
 						distance += handleArray(fPartial, objPartial, fComplete, objComplete);
@@ -240,7 +240,7 @@ public class DistanceSBES {
 				String[] fCompleteCast = String[].class.cast(objComplete);
 				int length = Math.min(Array.getLength(fPartialCast), Array.getLength(fCompleteCast));
 				for (int i = 0; i < length; i++) {
-					distance += LevenshteinDistance.calculateDistance(fPartialCast[i], fCompleteCast[i]);
+					distance += StringDistanceFunctions.distanceEditLevenshtein(fPartialCast[i], fCompleteCast[i]);
 				}
 				distance += (Math.max(Array.getLength(fPartialCast), Array.getLength(fCompleteCast)) - length) * Distance.ARRAY_CELL_FACTOR;
 			}
@@ -396,7 +396,7 @@ public class DistanceSBES {
 				String[] fCompleteCast = String[].class.cast(fComplete.get(objComplete));
 				int length = Math.min(Array.getLength(fPartialCast), Array.getLength(fCompleteCast));
 				for (int i = 0; i < length; i++) {
-					distance += LevenshteinDistance.calculateDistance(fPartialCast[i], fCompleteCast[i]);
+					distance += StringDistanceFunctions.distanceEditLevenshtein(fPartialCast[i], fCompleteCast[i]);
 				}
 				distance += (Math.max(Array.getLength(fPartialCast), Array.getLength(fCompleteCast)) - length) * Distance.ARRAY_CELL_FACTOR;
 			}

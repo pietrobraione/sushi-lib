@@ -1,6 +1,6 @@
 package sushi.compile.path_condition_distance;
 
-import sushi.compile.distance.PrefixDistance;
+import sushi.compile.distance.EdgeDistance;
 import sushi.logging.Logger;
 
 public class SimilarityWithRefToFreshObject extends SimilarityWithRef {
@@ -45,7 +45,7 @@ public class SimilarityWithRefToFreshObject extends SimilarityWithRef {
                     similarity += freshnessSimilarity;
 	        } else { //it is an alias rather than a fresh object
                     logger.debug(this.theReferenceOrigin + " is not a fresh object in candidate, rather it aliases " + objOrigin);
-                    final int distance = PrefixDistance.calculateDistance(this.theReferenceOrigin, objOrigin);
+                    final int distance = EdgeDistance.calculateDistance(this.theReferenceOrigin, objOrigin);
                     assert (distance != 0);
                     similarity += InverseDistances.inverseDistanceExp(distance, freshnessSimilarity);
 	        }
@@ -74,11 +74,11 @@ public class SimilarityWithRefToFreshObject extends SimilarityWithRef {
 	        final String packageCandidate = classNameCandidate.substring(0, splitPoint);
 	        classNameCandidate = classNameCandidate.substring(splitPoint, classNameCandidate.length());
 
-	        final int packageDistance = PrefixDistance.calculateDistance(packageTarget, packageCandidate);
+	        final int packageDistance = EdgeDistance.calculateDistance(packageTarget, packageCandidate);
 	        similarity += InverseDistances.inverseDistanceExp(packageDistance, samePackageSimilarity);
 	        if (packageDistance == 0) {
 	            logger.debug("The packages are the same");
-	            final double classNameDistance = PrefixDistance.calculateDistance(classNameTarget, classNameCandidate);
+	            final double classNameDistance = EdgeDistance.calculateDistance(classNameTarget, classNameCandidate);
 	            similarity += InverseDistances.inverseDistanceExp(classNameDistance, sameClassSimilarity);
 	        }
 	    }

@@ -1,6 +1,6 @@
 package sushi.compile.path_condition_distance;
 
-import sushi.compile.distance.PrefixDistance;
+import sushi.compile.distance.EdgeDistance;
 import sushi.logging.Logger;
 
 public class SimilarityWithRefToFreshObjectAnyClass extends SimilarityWithRef {
@@ -28,7 +28,7 @@ public class SimilarityWithRefToFreshObjectAnyClass extends SimilarityWithRef {
                     similarity = freshnessSimilarity;
 	        } else { //it is an alias rather than a fresh object
                     logger.debug(this.theReferenceOrigin + " is not a fresh object in candidate, rather it aliases " + objOrigin);
-                    final int distance = PrefixDistance.calculateDistance(this.theReferenceOrigin, objOrigin);
+                    final int distance = EdgeDistance.calculateDistance(this.theReferenceOrigin, objOrigin);
                     assert (distance != 0);
                     similarity = InverseDistances.inverseDistanceExp(distance, freshnessSimilarity);
 	        }

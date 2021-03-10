@@ -1,6 +1,6 @@
 package sushi.compile.path_condition_distance;
 
-import sushi.compile.distance.PrefixDistance;
+import sushi.compile.distance.EdgeDistance;
 import sushi.logging.Logger;
 
 public class SimilarityWithRefToAlias extends SimilarityWithRef {
@@ -37,7 +37,7 @@ public class SimilarityWithRefToAlias extends SimilarityWithRef {
 		    logger.debug("Non matching aliases: field " + this.theReferenceOrigin + " corresponds to field " + 
 		    objOrigin + " rather than to " + this.theAliasOrigin);
 		    assert (objOrigin != null);
-		    final int distance = PrefixDistance.calculateDistance(this.theAliasOrigin, objOrigin);
+		    final int distance = EdgeDistance.calculateDistance(this.theAliasOrigin, objOrigin);
 		    assert (distance != 0);
 		    similarity = InverseDistances.inverseDistanceExp(distance, 1.0d);
 		}	
