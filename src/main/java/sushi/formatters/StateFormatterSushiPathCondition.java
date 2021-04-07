@@ -1235,7 +1235,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 
                 @Override
                 public void visitSimplex(Simplex x) {
-                    translation.add(x.getActualValue().toString());
+                    translation.add(x.toString());
                 }
 
                 @Override
