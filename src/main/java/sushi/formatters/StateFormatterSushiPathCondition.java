@@ -468,7 +468,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                     this.s.append(arrayLength);
                     this.s.append("; ++i) {\n");
                     boolean firstDone = false;
-                    for (Iterator<? extends AccessOutcomeIn> it = arrayValue.entries(); it.hasNext(); ) {
+                    for (Iterator<? extends AccessOutcomeIn> it = arrayValue.entries().iterator(); it.hasNext(); ) {
                         this.s.append(INDENT_5);
                         if (firstDone) {
                             this.s.append("} else ");
@@ -503,8 +503,10 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                         }
                         this.s.append(";\n");
                     }
-                    this.s.append(INDENT_5);
-                    this.s.append("}\n");
+                    if (arrayValue.entries().size() > 0) {
+                    	this.s.append(INDENT_5);
+                    	this.s.append("}\n");
+                    }
                     this.s.append(INDENT_4);
                     this.s.append("}\n");
                     this.s.append(INDENT_4);
@@ -572,7 +574,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             
             try {
                 a.getLength().accept(v);
-                for (Iterator<? extends AccessOutcomeIn> it = a.entries(); it.hasNext(); ) {
+                for (Iterator<? extends AccessOutcomeIn> it = a.entries().iterator(); it.hasNext(); ) {
                     final AccessOutcomeIn entry = it.next();
                     entry.getAccessCondition().accept(v);
                     if (entry instanceof AccessOutcomeInValue) {
