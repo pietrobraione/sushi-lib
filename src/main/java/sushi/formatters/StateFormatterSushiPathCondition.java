@@ -665,7 +665,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             public void visitNarrowingConversion(NarrowingConversion x) throws Exception {
                 x.getArg().accept(this);
                 final String arg = this.result;
-                this.result = "((" + toPrimitiveOrVoidCanonicalName(x.getType()) + ") " + arg;
+                this.result = "((" + toPrimitiveOrVoidCanonicalName(x.getType()) + ") " + arg + ")";
             }
 
             @Override
