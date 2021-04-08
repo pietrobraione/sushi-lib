@@ -580,7 +580,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                     if (entry instanceof AccessOutcomeInValue) {
                         //it is an array of characters, so the value is primitive
                         ((Primitive) ((AccessOutcomeInValue) entry).getValue()).accept(v);
-                    } else {
+                    } else { //entry instanceof AccessOutcomeInInitialArray
                         final AccessOutcomeInInitialArray entryInitialArray = (AccessOutcomeInInitialArray) entry;
                         entryInitialArray.getOffset().accept(v);
                         final ReferenceSymbolic initialArrayOrigin = ((Array) finalState.getObject(entryInitialArray.getInitialArray())).getOrigin();
@@ -850,9 +850,15 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             final ArrayList<ReferenceConcrete> concreteStrings = new ArrayList<>();
             for (Value arg : applyArgs) {
                 if (arg instanceof ReferenceSymbolic) {
-                    symbolicStrings.add((ReferenceSymbolic) arg);
+                	final ReferenceSymbolic argSymbolic = (ReferenceSymbolic) arg;
+                	if (!symbolicStrings.contains(argSymbolic)) {
+                		symbolicStrings.add(argSymbolic);
+                	}
                 } else if (arg instanceof ReferenceConcrete)  {
-                    concreteStrings.add((ReferenceConcrete) arg);
+                	final ReferenceConcrete argConcrete = (ReferenceConcrete) arg;
+                	if (!concreteStrings.contains(argConcrete)) {
+                		concreteStrings.add((ReferenceConcrete) arg);
+                	}
                 }
             }
             
