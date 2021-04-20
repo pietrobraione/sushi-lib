@@ -87,10 +87,6 @@ public class Options {
 			handler = PathOptionHandler.class)
 	private Path evosuitePath = Paths.get(".", "lib", "evosuite.jar");
 	
-	@Option(name = "-use_mosa",
-			usage = "Set to true if you want to use MOSA, false for ordinary EvoSuite")
-	private boolean useMOSA = false;
-	
 	@Option(name = "-sushi_lib",
 			usage = "Path to Sushi library",
 			handler = PathOptionHandler.class)
@@ -129,10 +125,18 @@ public class Options {
 			usage = "Number of parallel synthesis tasks per trace")
 	private int redundanceEvosuite = 3;
 
+    @Option(name = "-evosuite_no_dependency",
+            usage = "Whether the generated tests should have no dependency on the EvoSuite runtime")
+    private boolean evosuiteNoDependency = false;
+
 	@Option(name = "-global_time_budget",
 			usage = "Time budget in seconds for the whole generation process, -1 for unlimited")
 	private int budgetGlobal = -1;
 	
+    @Option(name = "-num_mosa_targets",
+            usage = "Maximum number of target passed to a MOSA job")
+    private int numMOSATargets = 5;
+
 	@Option(name = "-log_level",
 			usage = "Logging level to be used: FATAL, ERROR, WARN, INFO, DEBUG")
 	private Level logLevel = Level.INFO;
@@ -226,11 +230,11 @@ public class Options {
 		this.tmpDirName = name;
 	}
 	
-	public Path getOutDirectory() {
+	public Path getOutDirPath() {
 		return this.outDir;
 	}
 	
-	public void setOutDirectory(Path dir) {
+	public void setOutDirPath(Path dir) {
 		this.outDir = dir;
 	}
 	
@@ -264,14 +268,6 @@ public class Options {
 	
 	public void setEvosuitePath(Path evosuitePath) {
 		this.evosuitePath = evosuitePath;
-	}
-	
-	public boolean getUseMOSA() {
-		return this.useMOSA;
-	}
-	
-	public void setUseMOSA(boolean useMOSA) {
-		this.useMOSA = useMOSA;
 	}
 	
 	public Path getSushiLibPath() {
@@ -346,6 +342,14 @@ public class Options {
 		this.redundanceEvosuite = redundanceEvosuite;
 	}
 	
+    public boolean getEvosuiteNoDependency() {
+        return this.evosuiteNoDependency;
+    }
+
+    public void setEvosuiteNoDependency(boolean evosuiteNoDependency) {
+        this.evosuiteNoDependency = evosuiteNoDependency;
+    }
+
 	public int getGlobalBudget() {
 		return this.budgetGlobal;
 	}
@@ -354,6 +358,14 @@ public class Options {
 		this.budgetGlobal = budgetGlobal;
 	}
 	
+    public int getNumMOSATargets() {
+        return this.numMOSATargets;
+    }
+
+    public void setNumMOSATargets(int numMOSATargets) {
+        this.numMOSATargets = numMOSATargets;
+    }
+
 	public Level getLogLevel() {
 		return this.logLevel;
 	}
