@@ -16,6 +16,13 @@ dependencies {
 group = 'sushi'
 version = '0.2.0-SNAPSHOT'
 
+task copyToLib(type: Copy) {
+    from configurations.compileClasspath
+    into "${buildDir}/libs"
+}
+
+build.dependsOn(copyToLib)
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(8)
