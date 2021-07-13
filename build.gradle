@@ -16,9 +16,13 @@ dependencies {
 group = 'sushi'
 version = '0.2.0-SNAPSHOT'
 
+task wrapper(type: Wrapper) {
+    gradleVersion = '7.1.1'
+}
+
 task copyToLib(type: Copy) {
     from configurations.compileClasspath
-    into "${buildDir}/libs"
+    into "deps"
 }
 
 build.dependsOn(copyToLib)
