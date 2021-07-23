@@ -83,6 +83,11 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
     public void setStringsNonconstant(Set<Long> stringOthers) {
         // TODO    
     }
+    
+    @Override
+    public void setForbiddenExpansions(List<String> forbiddenExpansions) {
+    	// TODO	
+    }
 
     @Override
     public void formatPrologue() {
