@@ -53,7 +53,11 @@ import jbse.val.NarrowingConversion;
 import jbse.val.Operator;
 import jbse.val.Primitive;
 import jbse.val.PrimitiveSymbolicApply;
-import jbse.val.PrimitiveSymbolicAtomic;
+import jbse.val.PrimitiveSymbolicHashCode;
+import jbse.val.PrimitiveSymbolicLocalVariable;
+import jbse.val.PrimitiveSymbolicMemberArray;
+import jbse.val.PrimitiveSymbolicMemberArrayLength;
+import jbse.val.PrimitiveSymbolicMemberField;
 import jbse.val.PrimitiveVisitor;
 import jbse.val.Reference;
 import jbse.val.ReferenceConcrete;
@@ -554,14 +558,6 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 }
 
                 @Override
-                public void visitPrimitiveSymbolicAtomic(PrimitiveSymbolicAtomic s) throws Exception {
-                    if (symbols.contains(s)) {
-                        return;
-                    }
-                    symbols.add(s);
-                }
-
-                @Override
                 public void visitSimplex(Simplex x) throws Exception { }
 
                 @Override
@@ -576,6 +572,47 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 public void visitWideningConversion(WideningConversion x) throws Exception {
                     x.getArg().accept(this);
                 }
+
+				@Override
+				public void visitPrimitiveSymbolicHashCode(PrimitiveSymbolicHashCode x) throws Exception {
+                    if (symbols.contains(x)) {
+                        return;
+                    }
+                    symbols.add(x);
+				}
+
+				@Override
+				public void visitPrimitiveSymbolicLocalVariable(PrimitiveSymbolicLocalVariable x) throws Exception {
+                    if (symbols.contains(x)) {
+                        return;
+                    }
+                    symbols.add(x);
+				}
+
+				@Override
+				public void visitPrimitiveSymbolicMemberArray(PrimitiveSymbolicMemberArray x) throws Exception {
+                    if (symbols.contains(x)) {
+                        return;
+                    }
+                    symbols.add(x);
+				}
+
+				@Override
+				public void visitPrimitiveSymbolicMemberArrayLength(PrimitiveSymbolicMemberArrayLength x)
+				throws Exception {
+                    if (symbols.contains(x)) {
+                        return;
+                    }
+                    symbols.add(x);
+				}
+
+				@Override
+				public void visitPrimitiveSymbolicMemberField(PrimitiveSymbolicMemberField x) throws Exception {
+                    if (symbols.contains(x)) {
+                        return;
+                    }
+                    symbols.add(x);
+				}
             };
             
             try {
@@ -648,12 +685,6 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             }
 
             @Override
-            public void visitPrimitiveSymbolicAtomic(PrimitiveSymbolicAtomic s) throws Exception {
-                this.result = getVariableFor(s);
-                
-            }
-
-            @Override
             public void visitSimplex(Simplex x) throws Exception {
                 this.result = x.toString();
             }
@@ -677,7 +708,32 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             @Override
             public void visitWideningConversion(WideningConversion x) throws Exception {
                 x.getArg().accept(this);
-            }            
+            }
+
+			@Override
+			public void visitPrimitiveSymbolicHashCode(PrimitiveSymbolicHashCode x) throws Exception {
+                this.result = getVariableFor(x);
+			}
+
+			@Override
+			public void visitPrimitiveSymbolicLocalVariable(PrimitiveSymbolicLocalVariable x) throws Exception {
+                this.result = getVariableFor(x);
+			}
+
+			@Override
+			public void visitPrimitiveSymbolicMemberArray(PrimitiveSymbolicMemberArray x) throws Exception {
+                this.result = getVariableFor(x);
+			}
+
+			@Override
+			public void visitPrimitiveSymbolicMemberArrayLength(PrimitiveSymbolicMemberArrayLength x) throws Exception {
+                this.result = getVariableFor(x);
+			}
+
+			@Override
+			public void visitPrimitiveSymbolicMemberField(PrimitiveSymbolicMemberField x) throws Exception {
+                this.result = getVariableFor(x);
+			}            
         }
         
         private void appendFinalHeapCompletionStatement() {
@@ -1001,14 +1057,6 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 public void visitSimplex(Simplex x) throws Exception { }
 
                 @Override
-                public void visitPrimitiveSymbolicAtomic(PrimitiveSymbolicAtomic s) {
-                    if (symbols.contains(s)) {
-                        return;
-                    }
-                    symbols.add(s);
-                }
-
-                @Override
                 public void visitNarrowingConversion(NarrowingConversion x) throws Exception {
                     x.getArg().accept(this);
                 }
@@ -1033,6 +1081,46 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
 
                 @Override
                 public void visitAny(Any x) { }
+
+				@Override
+				public void visitPrimitiveSymbolicHashCode(PrimitiveSymbolicHashCode x) {
+                    if (symbols.contains(x)) {
+                        return;
+                    }
+                    symbols.add(x);
+				}
+
+				@Override
+				public void visitPrimitiveSymbolicLocalVariable(PrimitiveSymbolicLocalVariable x) {
+                    if (symbols.contains(x)) {
+                        return;
+                    }
+                    symbols.add(x);
+				}
+
+				@Override
+				public void visitPrimitiveSymbolicMemberArray(PrimitiveSymbolicMemberArray x) {
+                    if (symbols.contains(x)) {
+                        return;
+                    }
+                    symbols.add(x);
+				}
+
+				@Override
+				public void visitPrimitiveSymbolicMemberArrayLength(PrimitiveSymbolicMemberArrayLength x) {
+                    if (symbols.contains(x)) {
+                        return;
+                    }
+                    symbols.add(x);
+				}
+
+				@Override
+				public void visitPrimitiveSymbolicMemberField(PrimitiveSymbolicMemberField x) {
+                    if (symbols.contains(x)) {
+                        return;
+                    }
+                    symbols.add(x);
+				}
             };
 
             try {
@@ -1199,11 +1287,6 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 }
 
                 @Override
-                public void visitPrimitiveSymbolicAtomic(PrimitiveSymbolicAtomic s) throws Exception {
-                    assumptionWithNoNegation.add(s);
-                }
-
-                @Override
                 public void visitSimplex(Simplex x) throws Exception {
                     assumptionWithNoNegation.add(x);
                 }
@@ -1223,6 +1306,31 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                     assumptionWithNoNegation.add(x);
                 }
 
+				@Override
+				public void visitPrimitiveSymbolicHashCode(PrimitiveSymbolicHashCode x) throws Exception {
+                    assumptionWithNoNegation.add(x);
+				}
+
+				@Override
+				public void visitPrimitiveSymbolicLocalVariable(PrimitiveSymbolicLocalVariable x) throws Exception {
+                    assumptionWithNoNegation.add(x);
+				}
+
+				@Override
+				public void visitPrimitiveSymbolicMemberArray(PrimitiveSymbolicMemberArray x) throws Exception {
+                    assumptionWithNoNegation.add(x);
+				}
+
+				@Override
+				public void visitPrimitiveSymbolicMemberArrayLength(PrimitiveSymbolicMemberArrayLength x)
+				throws Exception {
+                    assumptionWithNoNegation.add(x);
+				}
+
+				@Override
+				public void visitPrimitiveSymbolicMemberField(PrimitiveSymbolicMemberField x) throws Exception {
+                    assumptionWithNoNegation.add(x);
+				}
             };
             try {
                 assumption.accept(negationEliminator);
@@ -1254,12 +1362,6 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 @Override
                 public void visitSimplex(Simplex x) {
                     translation.add(x.toString());
-                }
-
-                @Override
-                public void visitPrimitiveSymbolicAtomic(PrimitiveSymbolicAtomic s) {
-                    makeVariableFor(s);
-                    translation.add(getVariableFor(s));
                 }
 
                 @Override
@@ -1354,6 +1456,36 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 public void visitAny(Any x) throws Exception {
                     throw new Exception();
                 }
+
+				@Override
+				public void visitPrimitiveSymbolicHashCode(PrimitiveSymbolicHashCode x) {
+                    makeVariableFor(x);
+                    translation.add(getVariableFor(x));
+				}
+
+				@Override
+				public void visitPrimitiveSymbolicLocalVariable(PrimitiveSymbolicLocalVariable x) {
+                    makeVariableFor(x);
+                    translation.add(getVariableFor(x));
+				}
+
+				@Override
+				public void visitPrimitiveSymbolicMemberArray(PrimitiveSymbolicMemberArray x) {
+                    makeVariableFor(x);
+                    translation.add(getVariableFor(x));
+				}
+
+				@Override
+				public void visitPrimitiveSymbolicMemberArrayLength(PrimitiveSymbolicMemberArrayLength x) {
+                    makeVariableFor(x);
+                    translation.add(getVariableFor(x));
+				}
+
+				@Override
+				public void visitPrimitiveSymbolicMemberField(PrimitiveSymbolicMemberField x) {
+                    makeVariableFor(x);
+                    translation.add(getVariableFor(x));
+				}
             };
             try {
                 assumptionWithNoNegation.get(0).accept(translator);

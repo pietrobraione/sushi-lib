@@ -33,7 +33,11 @@ import jbse.val.NarrowingConversion;
 import jbse.val.Primitive;
 import jbse.val.PrimitiveSymbolic;
 import jbse.val.PrimitiveSymbolicApply;
-import jbse.val.PrimitiveSymbolicAtomic;
+import jbse.val.PrimitiveSymbolicHashCode;
+import jbse.val.PrimitiveSymbolicLocalVariable;
+import jbse.val.PrimitiveSymbolicMemberArray;
+import jbse.val.PrimitiveSymbolicMemberArrayLength;
+import jbse.val.PrimitiveSymbolicMemberField;
 import jbse.val.PrimitiveVisitor;
 import jbse.val.ReferenceSymbolic;
 import jbse.val.Simplex;
@@ -589,11 +593,6 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
                 public void visitSimplex(Simplex x) throws Exception { }
 
                 @Override
-                public void visitPrimitiveSymbolicAtomic(PrimitiveSymbolicAtomic s) {
-                    symbols.add(s);
-                }
-
-                @Override
                 public void visitNarrowingConversion(NarrowingConversion x) throws Exception {
                     x.getArg().accept(this);
                 }
@@ -622,6 +621,31 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
 
                 @Override
                 public void visitAny(Any x) { }
+
+				@Override
+				public void visitPrimitiveSymbolicHashCode(PrimitiveSymbolicHashCode x) {
+                    symbols.add(x);
+				}
+
+				@Override
+				public void visitPrimitiveSymbolicLocalVariable(PrimitiveSymbolicLocalVariable x) {
+                    symbols.add(x);
+				}
+
+				@Override
+				public void visitPrimitiveSymbolicMemberArray(PrimitiveSymbolicMemberArray x) {
+                    symbols.add(x);
+				}
+
+				@Override
+				public void visitPrimitiveSymbolicMemberArrayLength(PrimitiveSymbolicMemberArrayLength x) {
+                    symbols.add(x);
+				}
+
+				@Override
+				public void visitPrimitiveSymbolicMemberField(PrimitiveSymbolicMemberField x) {
+                    symbols.add(x);
+				}
             };
 
             try {
