@@ -89,7 +89,7 @@ public final class StateFormatterSushiPartialHeap implements FormatterSushi {
     }
     
     @Override
-    public void setForbiddenExpansions(List<String> forbiddenExpansions) {
+    public void setForbiddenExpansions(Set<String> forbiddenExpansions) {
     	// TODO	
     }
 

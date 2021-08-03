@@ -18,6 +18,7 @@ import static sushi.util.TypeUtils.javaPrimitiveType;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -84,7 +85,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
     private final boolean shallRelaxLastExpansionClause;
     private HashMap<Long, String> stringLiterals = new HashMap<>();
     private TreeSet<Long> stringOthers = new TreeSet<>();
-    private ArrayList<String> forbiddenExpansions = new ArrayList<>();
+    private HashSet<String> forbiddenExpansions = new HashSet<>();
     private StringBuilder output = new StringBuilder();
     private int testCounter = 0;
 
@@ -115,8 +116,8 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
     }
     
     @Override
-    public void setForbiddenExpansions(List<String> forbiddenExpansions) {
-    	this.forbiddenExpansions = new ArrayList<>(forbiddenExpansions);
+    public void setForbiddenExpansions(Set<String> forbiddenExpansions) {
+    	this.forbiddenExpansions = new HashSet<>(forbiddenExpansions);
     }
 
     @Override
@@ -247,7 +248,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
         private final Calculator calc = new CalculatorRewriting(); //dummy
         private boolean panic = false;
 
-        MethodUnderTest(StringBuilder s, State initialState, State finalState, int testCounter, Set<Long> stringsOther, List<String> forbiddenExpansions, boolean shallRelaxLastExpansionClause) 
+        MethodUnderTest(StringBuilder s, State initialState, State finalState, int testCounter, Set<Long> stringsOther, Set<String> forbiddenExpansions, boolean shallRelaxLastExpansionClause) 
         throws FrozenStateException {
             this.s = s;
             appendMethodDeclaration(initialState, finalState, testCounter);
@@ -315,7 +316,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             this.s.append("]\n");
         }
         
-        private void appendPathCondition(State finalState, int testCounter, List<String> forbiddenExpansions, boolean shallRelaxLastExpansionClause) 
+        private void appendPathCondition(State finalState, int testCounter, Set<String> forbiddenExpansions, boolean shallRelaxLastExpansionClause) 
         throws FrozenStateException {
             if (this.panic) {
                 return;
@@ -772,7 +773,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             }
         }
 
-        private void setWithNewObject(State finalState, ReferenceSymbolic symbol, long heapPosition, boolean relax, List<String> forbiddenExpansions) 
+        private void setWithNewObject(State finalState, ReferenceSymbolic symbol, long heapPosition, boolean relax, Set<String> forbiddenExpansions) 
         throws FrozenStateException {
             this.s.append(INDENT_2);
             this.s.append("pathConditionHandler.add(new SimilarityWithRefToFreshObject(\"");
