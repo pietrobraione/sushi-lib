@@ -887,7 +887,9 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                     final String applyOperator = apply.getOperator();
                     return 
                     JAVA_STRING_EQUALS.toString().equals(applyOperator) || 
-                    JAVA_STRING_CONTAINS.toString().equals(applyOperator);
+                    JAVA_STRING_CONTAINS.toString().equals(applyOperator) ||
+                    JAVA_STRING_ENDSWITH.toString().equals(applyOperator) ||
+                    JAVA_STRING_STARTSWITH.toString().equals(applyOperator);
                 } else {
                     return false;
                 }
