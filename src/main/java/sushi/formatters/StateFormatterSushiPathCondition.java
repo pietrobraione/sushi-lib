@@ -83,6 +83,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
     private final Supplier<Long> traceCounterSupplier;
     private final Supplier<State> initialStateSupplier;
     private final boolean shallRelaxLastExpansionClause;
+    private final HashSet<Signature> uninterpretedMethods;
     private HashMap<Long, String> stringLiterals = new HashMap<>();
     private TreeSet<Long> stringOthers = new TreeSet<>();
     private HashSet<String> forbiddenExpansions = new HashSet<>();
@@ -92,17 +93,20 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
     public StateFormatterSushiPathCondition(long methodNumber,
                                             Supplier<Long> traceCounterSupplier,
                                             Supplier<State> initialStateSupplier, 
-                                            boolean shallRelaxLastExpansionClause) {
+                                            boolean shallRelaxLastExpansionClause,
+                                            Set<Signature> uninterpretedMethods) {
         this.methodNumber = methodNumber;
         this.traceCounterSupplier = traceCounterSupplier;
         this.initialStateSupplier = initialStateSupplier;
         this.shallRelaxLastExpansionClause = shallRelaxLastExpansionClause;
+        this.uninterpretedMethods = new HashSet<>(uninterpretedMethods);
     }
 
     public StateFormatterSushiPathCondition(int methodNumber,
                                             Supplier<State> initialStateSupplier, 
-                                            boolean shallRelaxLastExpansionClause) {
-        this(methodNumber, null, initialStateSupplier, shallRelaxLastExpansionClause);
+                                            boolean shallRelaxLastExpansionClause,
+                                            Set<Signature> uninterpretedMethods) {
+        this(methodNumber, null, initialStateSupplier, shallRelaxLastExpansionClause, uninterpretedMethods);
     }
 
     @Override
@@ -182,7 +186,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
     @Override
     public void formatState(State state) {
         try {
-            new MethodUnderTest(this.output, this.initialStateSupplier.get(), state, this.testCounter, this.stringOthers, this.forbiddenExpansions, this.shallRelaxLastExpansionClause);
+            new MethodUnderTest(this.output, this.initialStateSupplier.get(), state, this.testCounter, this.stringOthers, this.forbiddenExpansions, this.shallRelaxLastExpansionClause, this.uninterpretedMethods);
             this.output.append("}\n"); //closes the class declaration
         } catch (FrozenStateException e) {
             this.output.delete(0, this.output.length());
@@ -248,12 +252,12 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
         private final Calculator calc = new CalculatorRewriting(); //dummy
         private boolean panic = false;
 
-        MethodUnderTest(StringBuilder s, State initialState, State finalState, int testCounter, Set<Long> stringsOther, Set<String> forbiddenExpansions, boolean shallRelaxLastExpansionClause) 
+        MethodUnderTest(StringBuilder s, State initialState, State finalState, int testCounter, Set<Long> stringsOther, Set<String> forbiddenExpansions, boolean shallRelaxLastExpansionClause, HashSet<Signature> uninterpretedMethods) 
         throws FrozenStateException {
             this.s = s;
             appendMethodDeclaration(initialState, finalState, testCounter);
             appendStringsNonconstant(finalState, stringsOther);
-            appendPathCondition(finalState, testCounter, forbiddenExpansions, shallRelaxLastExpansionClause);
+            appendPathCondition(finalState, testCounter, forbiddenExpansions, shallRelaxLastExpansionClause, uninterpretedMethods);
             appendCandidateObjects(finalState, testCounter);
             appendFinalHeapCompletionStatement();
             appendIfStatement(testCounter);
@@ -316,7 +320,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             this.s.append("]\n");
         }
         
-        private void appendPathCondition(State finalState, int testCounter, Set<String> forbiddenExpansions, boolean shallRelaxLastExpansionClause) 
+        private void appendPathCondition(State finalState, int testCounter, Set<String> forbiddenExpansions, boolean shallRelaxLastExpansionClause, HashSet<Signature> uninterpretedMethods) 
         throws FrozenStateException {
             if (this.panic) {
                 return;
@@ -367,8 +371,8 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                     this.s.append("\n");
                     final ClauseAssume clauseAssume = (ClauseAssume) clause;
                     final Primitive assumption = clauseAssume.getCondition();
-                    if (isAssumptionOnBooleanApply(assumption)) {
-                        setAssumptionOnBooleanApply(finalState, assumption);
+                    if (isAssumptionOnBooleanApplyUninterpreted(assumption, uninterpretedMethods)) {
+                        setAssumptionOnBooleanApplyUninterpreted(finalState, assumption, uninterpretedMethods);
                     } else {
                         setNumericAssumption(finalState, assumption);
                     }
@@ -853,7 +857,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             return null;
         }
         
-        private boolean isAssumptionOnBooleanApply(Primitive assumption) {
+        private boolean isAssumptionOnBooleanApplyUninterpreted(Primitive assumption, HashSet<Signature> uninterpretedMethods) {
             if (!(assumption instanceof Expression)) {
                 return false;
             }
@@ -883,13 +887,17 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             if (otherOperand instanceof WideningConversion) {
                 final WideningConversion wideningOperand = (WideningConversion) otherOperand;
                 if (wideningOperand.getArg() instanceof PrimitiveSymbolicApply) {
+                	final Set<String> uninterpretedMethodsOperators = uninterpretedMethods.stream()
+                	.map(sig -> sig.toString())
+                	.collect(Collectors.toSet());
                     final PrimitiveSymbolicApply apply = (PrimitiveSymbolicApply) wideningOperand.getArg();
                     final String applyOperator = apply.getOperator();
                     return 
                     JAVA_STRING_EQUALS.toString().equals(applyOperator) || 
                     JAVA_STRING_CONTAINS.toString().equals(applyOperator) ||
                     JAVA_STRING_ENDSWITH.toString().equals(applyOperator) ||
-                    JAVA_STRING_STARTSWITH.toString().equals(applyOperator);
+                    JAVA_STRING_STARTSWITH.toString().equals(applyOperator) ||
+                    uninterpretedMethodsOperators.contains(applyOperator);
                 } else {
                     return false;
                 }
@@ -899,7 +907,7 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
         }
         
         //TODO this code assumes all reference args point to strings
-        private void setAssumptionOnBooleanApply(State state, Primitive assumption) {
+        private void setAssumptionOnBooleanApplyUninterpreted(State state, Primitive assumption, HashSet<Signature> uninterpretedMethods) {
             final Value[] applyArgs;
             final String applyOperator;
             final boolean shallBeEqual;
@@ -972,6 +980,9 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             }
             this.s.append(INDENT_4);
             this.s.append("return ");
+        	final Set<String> uninterpretedMethodsOperators = uninterpretedMethods.stream()
+        	.map(sig -> sig.toString())
+        	.collect(Collectors.toSet());
             if (JAVA_STRING_EQUALS.toString().equals(applyOperator)) {
                 this.s.append(javaStringComparisonAssumptionCheck(state, applyArgs, shallBeEqual, "equals", "distanceEditLevenshtein"));
             } else if (JAVA_STRING_CONTAINS.toString().equals(applyOperator)) {
@@ -980,6 +991,8 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
                 this.s.append(javaStringComparisonAssumptionCheck(state, applyArgs, shallBeEqual, "endsWith", "distanceSuffix"));
             } else if (JAVA_STRING_STARTSWITH.toString().equals(applyOperator)) {
                 this.s.append(javaStringComparisonAssumptionCheck(state, applyArgs, shallBeEqual, "startsWith", "distancePrefix"));
+            } else if (uninterpretedMethodsOperators.contains(applyOperator)) {
+            	this.s.append(javaUninterpretedFunctionAssumptionCheck(state, applyArgs, shallBeEqual, applyOperator));
             } else {
                 //this should never happen
                 throw new AssertionError("Unexpected function application of " + applyOperator + " for which a fitness function does not exist.");
@@ -1163,12 +1176,14 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             if (applyArgs[0] instanceof ReferenceSymbolic) {
                 firstArg = getVariableFor((ReferenceSymbolic) applyArgs[0]);
             } else {
+        		//reference concrete to String constant
                 firstArg = "S" + ((ReferenceConcrete) applyArgs[0]).getHeapPosition();
             }
             final String secondArg;
             if (applyArgs[1] instanceof ReferenceSymbolic) {
                 secondArg = getVariableFor((ReferenceSymbolic) applyArgs[1]);
             } else {
+        		//reference concrete to String constant
                 secondArg = "S" + ((ReferenceConcrete) applyArgs[1]).getHeapPosition();
             }
             
@@ -1199,7 +1214,9 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             }
             retVal.append(" : ");
             retVal.append(firstArg);
-            retVal.append("." + javaMethod + "(");
+            retVal.append(".");
+            retVal.append(javaMethod);
+            retVal.append("(");
             retVal.append(secondArg);
             retVal.append(") ? ");
             if (shallBeEqual) {
@@ -1209,10 +1226,67 @@ public final class StateFormatterSushiPathCondition implements FormatterSushi {
             }
             retVal.append(" : ");
             if (shallBeEqual) {
-                retVal.append("sushi.compile.distance.StringDistanceFunctions." + distanceFunction + "(");
+                retVal.append("sushi.compile.distance.StringDistanceFunctions.");
+                retVal.append(distanceFunction);
+                retVal.append("(");
                 retVal.append(firstArg);
                 retVal.append(", ");
                 retVal.append(secondArg);
+                retVal.append(")");
+            } else {
+                retVal.append("1");
+            }
+            retVal.append(")");
+            return retVal.toString();
+        }
+        
+        //TODO we assume all args are references to strings
+        private String javaUninterpretedFunctionAssumptionCheck(State state, Value[] applyArgs, boolean shallBeEqual, String javaSignature) {
+            final String[] args = new String[applyArgs.length];
+            for (int i = 0; i < applyArgs.length; ++i) {
+            	if (applyArgs[i] instanceof ReferenceSymbolic) {
+            		args[i] = getVariableFor((ReferenceSymbolic) applyArgs[i]);
+            	} else {
+            		//reference concrete to String constant
+            		args[i] = "S" + ((ReferenceConcrete) applyArgs[i]).getHeapPosition();
+            	}
+            }
+            
+            final String javaClass = javaSignature.substring(0, javaSignature.indexOf(':')).replace('$', '.').replace('/', '.');
+            final String javaMethodName = javaSignature.substring(javaSignature.lastIndexOf(':') + 1);
+            final String javaMethod = javaClass + "." + javaMethodName;
+            final String distanceFunction = "sushi.compile.distance.emit." + javaClass.replace('.', '_') + "." + javaMethodName;
+
+            final StringBuilder retVal = new StringBuilder();
+            retVal.append("(");
+            retVal.append(javaMethod);
+            retVal.append("(");
+            boolean firstDone = false;
+            for (String arg : args) {
+            	if (firstDone) {
+            		retVal.append(", ");
+            	}
+            	retVal.append(arg);
+            	firstDone = true;
+            }
+            retVal.append(") ? ");
+            if (shallBeEqual) {
+                retVal.append("0");
+            } else {
+                retVal.append("1");
+            }
+            retVal.append(" : ");
+            if (shallBeEqual) {
+                retVal.append(distanceFunction);
+                retVal.append("(");
+                firstDone = false;
+                for (String arg : args) {
+                	if (firstDone) {
+                		retVal.append(", ");
+                	}
+                	retVal.append(arg);
+                	firstDone = true;
+                }
                 retVal.append(")");
             } else {
                 retVal.append("1");
