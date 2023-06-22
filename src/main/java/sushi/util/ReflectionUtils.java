@@ -172,12 +172,13 @@ public class ReflectionUtils {
 
     public static Method method(Class<?> methodClass, String methodDescriptor, String methodName) 
     throws ClassNotFoundException, NoSuchMethodException, SecurityException {
+    	final ClassLoader cl = methodClass.getClassLoader();
         final ArrayList<Class<?>> parametersClasses = new ArrayList<>();
         for (String parameterType : splitParametersDescriptors(methodDescriptor)) {
             final Class<?> parameterClass;
             if (parameterType.charAt(0) == ARRAYOF || parameterType.charAt(0) == REFERENCE) {
                 final String parameterJavaType = javaClass(parameterType, false);
-                parameterClass = Class.forName(parameterJavaType);
+                parameterClass = cl.loadClass(parameterJavaType);
             } else {
                 switch (parameterType.charAt(0)) {
                 case BOOLEAN:
