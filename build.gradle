@@ -17,7 +17,7 @@ group = 'sushi'
 version = '0.2.0-SNAPSHOT'
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '7.1.1'
+    gradleVersion = '8.4'
 }
 
 task copyToLib(type: Copy) {
