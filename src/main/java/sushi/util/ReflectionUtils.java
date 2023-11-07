@@ -175,43 +175,38 @@ public class ReflectionUtils {
     	final ClassLoader cl = methodClass.getClassLoader();
         final ArrayList<Class<?>> parametersClasses = new ArrayList<>();
         for (String parameterType : splitParametersDescriptors(methodDescriptor)) {
-            final Class<?> parameterClass;
-            if (parameterType.charAt(0) == ARRAYOF || parameterType.charAt(0) == REFERENCE) {
-                final String parameterJavaType = javaClass(parameterType, false);
-                parameterClass = cl.loadClass(parameterJavaType);
-            } else {
-                switch (parameterType.charAt(0)) {
-                case BOOLEAN:
-                    parameterClass = boolean.class;
-                    break;
-                case BYTE:
-                    parameterClass = byte.class;
-                    break;
-                case CHAR:
-                    parameterClass = char.class;
-                    break;
-                case DOUBLE:
-                    parameterClass = double.class;
-                    break;
-                case FLOAT:
-                    parameterClass = float.class;
-                    break;
-                case INT:
-                    parameterClass = int.class;
-                    break;
-                case LONG:
-                    parameterClass = long.class;
-                    break;
-                case SHORT:
-                    parameterClass = short.class;
-                    break;
-                default:
-                    throw new RuntimeException("Reached unreachable default: unrecognized primitive type for argument: " + parameterType.charAt(0));
-                }
-            }
+            final Class<?> parameterClass = parameterClass(parameterType, cl);
             parametersClasses.add(parameterClass);
         }
         final Method retVal = methodClass.getDeclaredMethod(methodName, parametersClasses.toArray(new Class<?>[0]));
         return retVal;
+    }
+    
+    private static Class<?> parameterClass(String parameterType, ClassLoader cl) throws ClassNotFoundException {
+        if (parameterType.charAt(0) == REFERENCE || parameterType.charAt(0) == ARRAYOF) {
+            final String parameterJavaType = javaClass(parameterType, false);
+            return Class.forName(parameterJavaType, true, cl);
+        } else {
+            switch (parameterType.charAt(0)) {
+            case BOOLEAN:
+                return boolean.class;
+            case BYTE:
+                return byte.class;
+            case CHAR:
+            	return char.class;
+            case DOUBLE:
+            	return double.class;
+            case FLOAT:
+            	return float.class;
+            case INT:
+            	return int.class;
+            case LONG:
+            	return long.class;
+            case SHORT:
+            	return short.class;
+            default:
+                throw new RuntimeException("Reached unreachable default: unrecognized type for argument: " + parameterType.charAt(0));
+            }
+        }
     }
 }
