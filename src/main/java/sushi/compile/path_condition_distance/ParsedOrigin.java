@@ -661,6 +661,10 @@ public class ParsedOrigin {
                     return Float.valueOf(((Number) arg).floatValue());
                 case INT:
                     return Integer.valueOf(((Number) arg).intValue());
+                case SHORT:
+                    return Short.valueOf(((Number) arg).shortValue());
+                case BYTE:
+                    return Byte.valueOf(((Number) arg).byteValue());
                 case LONG:
                     return Long.valueOf(((Number) arg).longValue());
                 default:
@@ -678,10 +682,10 @@ public class ParsedOrigin {
             final Object arg = eval(argString, candidateObjects, candidateBackbone, constants, cache);
             if (arg instanceof Number) {
                 switch (destinationType) {
-                case FLOAT:
-                    return Float.valueOf(((Number) arg).floatValue());
                 case DOUBLE:
                     return Double.valueOf(((Number) arg).doubleValue());
+                case FLOAT:
+                    return Float.valueOf(((Number) arg).floatValue());
                 case INT:
                     return Integer.valueOf(((Number) arg).intValue());
                 case SHORT:
