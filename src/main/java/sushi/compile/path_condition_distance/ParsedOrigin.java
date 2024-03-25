@@ -4,6 +4,8 @@ import static sushi.util.ReflectionUtils.method;
 import static sushi.util.TypeUtils.DOUBLE;
 import static sushi.util.TypeUtils.FLOAT;
 import static sushi.util.TypeUtils.INT;
+import static sushi.util.TypeUtils.SHORT;
+import static sushi.util.TypeUtils.BYTE;
 import static sushi.util.TypeUtils.LONG;
 import static sushi.util.TypeUtils.javaClass;
 import static sushi.util.TypeUtils.splitParametersDescriptors;
@@ -455,7 +457,7 @@ public class ParsedOrigin {
                 throw new FieldNotInCandidateException();
             }	
             try {
-                obj = this.identityHashCodeMethod.invoke(obj);
+                obj = this.identityHashCodeMethod.invoke(null, obj);
             } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
                 throw new SimilarityComputationException("Reflective exception while invoking method " + this.identityHashCodeMethod + "; exception: " + e.toString());
             }
@@ -678,8 +680,14 @@ public class ParsedOrigin {
                 switch (destinationType) {
                 case FLOAT:
                     return Float.valueOf(((Number) arg).floatValue());
+                case DOUBLE:
+                    return Double.valueOf(((Number) arg).doubleValue());
                 case INT:
                     return Integer.valueOf(((Number) arg).intValue());
+                case SHORT:
+                    return Short.valueOf(((Number) arg).shortValue());
+                case BYTE:
+                    return Byte.valueOf(((Number) arg).byteValue());
                 case LONG:
                     return Long.valueOf(((Number) arg).longValue());
                 default:
