@@ -49,6 +49,7 @@ public class SimilarityWithConditionalExpressionITE<VALUE_TYPE, COLOR_TYPE> impl
 		    }
 	    	variables.add(variableValue);
 	    }
+	    this.theValueCalculator.getColor().reset();
 	    similarity += inverseDistanceRatio(this.theValueCalculator.calculate(variables), 1.0d); 
 	    logger.debug("Similarity increases by: " + similarity);
 	    return similarity;
