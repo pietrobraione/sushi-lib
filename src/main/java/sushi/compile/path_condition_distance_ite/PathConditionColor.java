@@ -43,5 +43,8 @@ public class PathConditionColor<COLOR_TYPE> {
 		color.clear();
 	}
 	
-	
+	@Override
+	public String toString() { //for debugging purposes
+		return color.toString();
+	}
 }
