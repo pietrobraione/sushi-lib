@@ -7,18 +7,8 @@ repositories {
     mavenCentral()
 }
 
-dependencies {
-    implementation 'org.jacoco:org.jacoco.core:0.7.5.201505241946' //note that it transitively depends on org.ow2.asm:asm-debug-all
-    implementation 'args4j:args4j:2.32'
-    implementation project(':jbse')
-}
-
 group = 'sushi'
-version = '0.2.0-SNAPSHOT'
-
-task wrapper(type: Wrapper) {
-    gradleVersion = '8.4'
-}
+version = '0.3.0-SNAPSHOT'
 
 task copyToLib(type: Copy) {
     from configurations.compileClasspath

@@ -54,7 +54,9 @@ public final class TypeUtils {
 				if (tmp[i] == '[') {
 					++arrayNestingLevel;
 				} else if (tmp[i] == 'L') {
+					start = i + 1;
 					hasReference = true;
+					break;
 				} else {
 					start = i;
 					break;

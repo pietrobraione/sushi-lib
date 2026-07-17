@@ -7,40 +7,41 @@ import java.lang.reflect.Field;
 public class ObjectField {
 	
 	private final Object obj;
-	private Field fld;
+	private final Field fld;
 
 	public ObjectField(Object obj, String fldName) {
 		this.obj = obj;
 		try {
         	Class<?> clazz = obj.getClass();
-        	this.fld = null;
+        	Field fldTmp = null;
         	do {
         		try {
-        			this.fld = clazz.getDeclaredField(fldName);
+        			fldTmp = clazz.getDeclaredField(fldName);
         			break;
         		} catch (NoSuchFieldException e) {
         			clazz = clazz.getSuperclass();
         		}
         	} while (clazz != null);
-        	if (this.fld == null) {
+        	if (fldTmp == null) {
         		throw new NoSuchFieldException();
         	}
+        	this.fld = fldTmp;
 		} catch (NoSuchFieldException | SecurityException e) {
 			throw new RuntimeException(e);
 		}
 	}
 	
-	public ObjectField(Object obj, Field fldName) {
+	public ObjectField(Object obj, Field fld) {
 		this.obj = obj;
-		this.fld = fldName;
+		this.fld = fld;
 	}
 
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((fld == null) ? 0 : fld.hashCode());
-		result = prime * result + ((obj == null) ? 0 : identityHashCode(obj));
+		result = prime * result + ((this.fld == null) ? 0 : this.fld.hashCode());
+		result = prime * result + ((this.obj == null) ? 0 : identityHashCode(this.obj));
 		return result;
 	}
 
@@ -60,7 +61,7 @@ public class ObjectField {
 			if (other.fld != null) {
 				return false;
 			}
-		} else if (!fld.equals(other.fld)) {
+		} else if (!this.fld.equals(other.fld)) {
 			return false;
 		}
 		if (this.obj == null) {
@@ -72,5 +73,4 @@ public class ObjectField {
 		}
 		return true;
 	}
-
 }
