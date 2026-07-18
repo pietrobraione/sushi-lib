@@ -9,6 +9,7 @@ repositories {
 
 group = 'sushi'
 version = '0.3.0-SNAPSHOT'
+description = 'SUSHI-lib'
 
 task copyToLib(type: Copy) {
     from configurations.compileClasspath
